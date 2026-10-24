@@ -1,0 +1,56 @@
+# ---- Secrets (never commit) --------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+# Flutter app settings (bundled into the app, so public values only): the real
+# file is never committed; mobile/.env.example is the tracked template.
+mobile/.env
+mobile/.env.*
+!mobile/.env.example
+
+# ---- Python / FastAPI --------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# ---- Flutter / Dart ----------------------------------------------------------
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/.pub-cache/
+mobile/.pub/
+mobile/build/
+mobile/coverage/
+mobile/pubspec_overrides.yaml
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/key.properties
+mobile/android/**/*.jks
+mobile/android/**/*.keystore
+mobile/android/captures/
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/ios/Flutter/ephemeral/
+mobile/ios/Flutter/Generated.xcconfig
+mobile/ios/Flutter/flutter_export_environment.sh
+mobile/ios/**/xcuserdata/
+mobile/ios/**/DerivedData/
+
+# ---- Supabase CLI local state -----------------------------------------------
+supabase/.branches/
+supabase/.temp/
+
+# ---- Editors / OS ------------------------------------------------------------
+.idea/
+.vscode/
+*.iml
+.DS_Store

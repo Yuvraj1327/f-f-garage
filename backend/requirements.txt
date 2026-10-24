@@ -1,0 +1,9 @@
+# Runtime dependencies (versions below are the ones the test suite was run against).
+fastapi==0.143.3
+uvicorn[standard]==0.54.0
+pydantic-settings==2.16.0
+supabase==2.33.0
+# Verifies Supabase access tokens (ES256/RS256 via JWKS, legacy HS256).
+PyJWT[crypto]==2.15.1
+tzdata==2025.2
+certifi>=2024.2.2

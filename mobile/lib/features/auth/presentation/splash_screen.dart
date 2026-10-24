@@ -1,0 +1,47 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../providers/auth_controller.dart';
+
+/// Shown while a stored session is being checked. If the backend cannot be
+/// reached, offers a retry instead of silently signing the user out.
+class SplashScreen extends ConsumerWidget {
+  const SplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(authControllerProvider.select((s) => s.status));
+    final textTheme = Theme.of(context).textTheme;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('F&F Garage', style: textTheme.headlineMedium),
+                const SizedBox(height: 24),
+                if (status == AuthStatus.connectionError) ...[
+                  const Text(
+                    'Unable to reach the server. Check your internet '
+                    'connection and try again.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () =>
+                        ref.read(authControllerProvider.notifier).restoreSession(),
+                    child: const Text('Retry'),
+                  ),
+                ] else
+                  const CircularProgressIndicator(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
