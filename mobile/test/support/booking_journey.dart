@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'fakes_booking.dart';
 import 'fakes_catalog.dart';
+import 'fakes_maps.dart';
 import 'fakes_notification.dart';
 import 'fakes_payment.dart';
 import 'pump_app.dart';
@@ -98,6 +99,9 @@ AppHarness customerHarness({
   FakeCheckoutLauncher? launcher,
   FakeNotificationRepository? notifications,
   Duration? pollInterval,
+  FakeMapsRepository? maps,
+  FakeLocationService? location,
+  bool mapsEnabled = false,
 }) {
   final availability = FakeAvailabilityRepository()
     ..days = days ?? openDays();
@@ -110,6 +114,9 @@ AppHarness customerHarness({
     launcher: launcher,
     notifications: notifications,
     pollInterval: pollInterval,
+    maps: maps,
+    location: location,
+    mapsEnabled: mapsEnabled,
   );
 }
 

@@ -4,6 +4,7 @@ import 'package:ff_garage/core/config/app_config.dart';
 import 'package:ff_garage/core/providers/core_providers.dart';
 import 'package:ff_garage/data/models/enums.dart';
 import 'package:ff_garage/data/providers/data_providers.dart';
+import 'package:ff_garage/features/maps/map_providers.dart';
 import 'package:ff_garage/features/notifications/providers/notification_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,7 @@ import 'fakes.dart';
 import 'fakes_booking.dart';
 import 'fakes_catalog.dart';
 import 'fakes_driver.dart';
+import 'fakes_maps.dart';
 import 'fakes_notification.dart';
 import 'fakes_payment.dart';
 import 'fakes_support.dart';
@@ -32,8 +34,13 @@ class AppHarness {
     FakeNotificationRepository? notifications,
     FakeSupportRepository? support,
     FakeContactLauncher? contactLauncher,
+    FakeMapsRepository? maps,
+    FakeLocationService? location,
+    this.mapsEnabled = false,
     Duration? pollInterval,
-  })  : support = support ?? FakeSupportRepository(),
+  })  : maps = maps ?? FakeMapsRepository(),
+        location = location ?? FakeLocationService(),
+        support = support ?? FakeSupportRepository(),
         contactLauncher = contactLauncher ?? FakeContactLauncher(),
         notifications = notifications ?? FakeNotificationRepository(),
         pollInterval = pollInterval ?? const Duration(days: 1),
@@ -61,6 +68,13 @@ class AppHarness {
   final FakeNotificationRepository notifications;
   final FakeSupportRepository support;
   final FakeContactLauncher contactLauncher;
+  final FakeMapsRepository maps;
+  final FakeLocationService location;
+
+  /// True gives the app a Maps key for the test platform, so map screens show
+  /// a [FakeMapView] instead of the "maps are off" fallbacks.
+  final bool mapsEnabled;
+  final FakeMapView mapView = FakeMapView();
 
   /// How often screens check for booking updates. Long by default so no test
   /// sees a surprise reload; tests of live updates pass a short one.
@@ -73,12 +87,17 @@ class AppHarness {
       ProviderScope(
         overrides: [
           appConfigProvider.overrideWithValue(
-            const AppConfig(
+            AppConfig(
               apiBaseUrl: 'http://x',
               supabaseUrl: 'http://x',
               supabaseAnonKey: 'anon',
+              // Widget tests run as Android: that is the key that counts.
+              mapsKeyAndroid: mapsEnabled ? 'test-maps-key' : '',
             ),
           ),
+          mapsRepositoryProvider.overrideWithValue(maps),
+          locationServiceProvider.overrideWithValue(location),
+          mapViewBuilderProvider.overrideWithValue(mapView.build),
           authGatewayProvider.overrideWithValue(gateway),
           profileRepositoryProvider.overrideWithValue(
             FakeProfileRepository(profileFor(role)),

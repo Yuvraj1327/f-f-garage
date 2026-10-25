@@ -19,6 +19,8 @@ Booking booking({
   ClockTime end = const ClockTime(11, 0),
   String address = '12 MG Road',
   String? landmark,
+  double? latitude,
+  double? longitude,
   String? notes,
   String pincode = '560001',
   bool canCancel = true,
@@ -54,6 +56,8 @@ Booking booking({
       customerPhone: '+919876543210',
       addressLine: address,
       landmark: landmark,
+      latitude: latitude,
+      longitude: longitude,
       city: 'Bengaluru',
       state: 'Karnataka',
       pincode: pincode,
@@ -155,6 +159,8 @@ class FakeBookingRepository implements BookingRepository {
       date: draft.date,
       address: draft.addressLine,
       landmark: draft.landmark,
+      latitude: draft.latitude,
+      longitude: draft.longitude,
       pincode: draft.pincode,
     );
     bookings = [created, ...bookings];
@@ -210,6 +216,12 @@ class FakeBookingRepository implements BookingRepository {
       notes: changes.containsKey('customer_notes')
           ? changes['customer_notes'] as String?
           : old.notes,
+      latitude: changes.containsKey('latitude')
+          ? changes['latitude'] as double?
+          : old.latitude,
+      longitude: changes.containsKey('longitude')
+          ? changes['longitude'] as double?
+          : old.longitude,
       pincode: (changes['pincode'] as String?) ?? old.pincode,
     );
     bookings = [for (final b in bookings) b.id == id ? updated : b];

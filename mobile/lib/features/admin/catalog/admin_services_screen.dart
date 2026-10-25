@@ -6,6 +6,7 @@ import '../../../app/router/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/async_view.dart';
 import '../../../core/widgets/form_widgets.dart';
+import '../../../core/widgets/service_icon.dart';
 import '../../../data/models/catalog.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/providers/data_providers.dart';
@@ -91,32 +92,58 @@ class _ServiceTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final textTheme = Theme.of(context).textTheme;
     final packageCount = service.packages.length;
-    return ListTile(
-      title: Row(
-        children: [
-          Flexible(child: Text(service.name)),
-          if (!service.isActive) ...[
-            const SizedBox(width: 8),
-            const InactiveBadge(),
-          ],
-        ],
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.adminService(service.id)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+          child: Row(
+            children: [
+              ServiceThumb(category: service.category, size: 48),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(service.name, style: textTheme.titleMedium),
+                        ),
+                        if (!service.isActive) ...[
+                          const SizedBox(width: 8),
+                          const InactiveBadge(),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${vehicleLabel(service.vehicleType)} - '
+                      '${service.category} - '
+                      '$packageCount ${packageCount == 1 ? 'package' : 'packages'}',
+                      style: textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              ActiveSwitch(
+                value: service.isActive,
+                semanticLabel: '${service.name} active',
+                onChanged: (value) async {
+                  await ref
+                      .read(catalogRepositoryProvider)
+                      .updateService(service.id, {'is_active': value});
+                  refreshCatalog(ref);
+                },
+              ),
+            ],
+          ),
+        ),
       ),
-      subtitle: Text(
-        '${vehicleLabel(service.vehicleType)} - ${service.category} - '
-        '$packageCount ${packageCount == 1 ? 'package' : 'packages'}',
-      ),
-      trailing: ActiveSwitch(
-        value: service.isActive,
-        semanticLabel: '${service.name} active',
-        onChanged: (value) async {
-          await ref
-              .read(catalogRepositoryProvider)
-              .updateService(service.id, {'is_active': value});
-          refreshCatalog(ref);
-        },
-      ),
-      onTap: () => context.push(AppRoutes.adminService(service.id)),
     );
   }
 }

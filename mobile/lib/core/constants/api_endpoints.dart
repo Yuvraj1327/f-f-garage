@@ -32,6 +32,10 @@ abstract final class ApiEndpoints {
   static String adminException(String id) =>
       '/admin/availability/exceptions/$id';
 
+  // Address lookup (customers). The Google key stays on the server.
+  static const String mapsGeocode = '/maps/geocode';
+  static const String mapsReverse = '/maps/reverse';
+
   // Customer bookings
   static const String bookings = '/bookings';
   static const String bookingQuote = '/bookings/quote';

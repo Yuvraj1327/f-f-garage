@@ -16,7 +16,6 @@ class ConfigErrorApp extends StatelessWidget {
       title: 'F&F Garage',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
       home: ConfigErrorScreen(problems: problems),
     );
   }

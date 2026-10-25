@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/async_view.dart';
+import '../../../core/widgets/status_badge.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/enums.dart';
 
@@ -33,45 +34,30 @@ class BookingStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final Color background;
-    final Color foreground;
-    switch (status) {
-      case BookingStatus.cancelled:
-        background = scheme.errorContainer;
-        foreground = scheme.onErrorContainer;
-      case BookingStatus.completed:
-      case BookingStatus.confirmed:
-        background = scheme.primaryContainer;
-        foreground = scheme.onPrimaryContainer;
-      default:
-        background = scheme.secondaryContainer;
-        foreground = scheme.onSecondaryContainer;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // The icon means the status is not conveyed by colour alone.
-          Icon(_statusIcon(status), size: 16, color: foreground),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              bookingStatusLabel(status),
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(color: foreground),
-            ),
-          ),
-        ],
-      ),
+    // The icon means the status is not conveyed by colour alone.
+    return StatusBadge(
+      label: bookingStatusLabel(status),
+      tone: bookingStatusTone(status),
+      icon: _statusIcon(status),
     );
+  }
+}
+
+/// Design-system colour of a booking status: pending orange, in-flight blue,
+/// completed green, cancelled red.
+BadgeTone bookingStatusTone(BookingStatus status) {
+  switch (status) {
+    case BookingStatus.pendingPayment:
+      return BadgeTone.warning;
+    case BookingStatus.confirmed:
+    case BookingStatus.assigned:
+    case BookingStatus.onTheWay:
+    case BookingStatus.inProgress:
+      return BadgeTone.info;
+    case BookingStatus.completed:
+      return BadgeTone.success;
+    case BookingStatus.cancelled:
+      return BadgeTone.danger;
   }
 }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/brand_logo.dart';
 import '../providers/auth_controller.dart';
 
 /// Shown while a stored session is being checked. If the backend cannot be
@@ -14,6 +15,7 @@ class SplashScreen extends ConsumerWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -21,8 +23,14 @@ class SplashScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('F&F Garage', style: textTheme.headlineMedium),
-                const SizedBox(height: 24),
+                const BrandLogo(size: 240),
+                const SizedBox(height: 8),
+                Text(
+                  'Your Bike Care At Your Doorstep',
+                  style: textTheme.bodyLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
                 if (status == AuthStatus.connectionError) ...[
                   const Text(
                     'Unable to reach the server. Check your internet '

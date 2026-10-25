@@ -89,6 +89,8 @@ class Booking {
     this.cancelledAt,
     this.durationMinutes,
     this.landmark,
+    this.latitude,
+    this.longitude,
     this.state,
     this.notes,
     this.cancellationReason,
@@ -114,6 +116,8 @@ class Booking {
         customerPhone: JsonReader.string(json, 'customer_phone'),
         addressLine: JsonReader.string(json, 'address_line'),
         landmark: JsonReader.optionalString(json, 'landmark'),
+        latitude: JsonReader.optionalDouble(json, 'latitude'),
+        longitude: JsonReader.optionalDouble(json, 'longitude'),
         city: JsonReader.string(json, 'city'),
         state: JsonReader.optionalString(json, 'state'),
         pincode: JsonReader.string(json, 'pincode'),
@@ -182,6 +186,13 @@ class Booking {
   final String customerPhone;
   final String addressLine;
   final String? landmark;
+
+  /// Where on the map the customer put the pin; null when they only typed an
+  /// address. Always both or neither.
+  final double? latitude;
+  final double? longitude;
+
+  bool get hasLocation => latitude != null && longitude != null;
   final String city;
   final String? state;
   final String pincode;
@@ -374,6 +385,8 @@ class NewBooking {
     required this.clientRequestId,
     this.extraChargeIds = const [],
     this.landmark,
+    this.latitude,
+    this.longitude,
     this.notes,
   });
 
@@ -382,6 +395,10 @@ class NewBooking {
   final String pincode;
   final String addressLine;
   final String? landmark;
+
+  /// The map pin, when the customer chose one (both or neither).
+  final double? latitude;
+  final double? longitude;
   final DateTime date;
   final String timeSlotId;
   final String? notes;

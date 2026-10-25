@@ -7,6 +7,7 @@ import 'app/app.dart';
 import 'app/config_error_screen.dart';
 import 'core/config/app_config.dart';
 import 'core/providers/core_providers.dart';
+import 'features/onboarding/providers/onboarding_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,9 +45,16 @@ Future<void> main() async {
     return;
   }
 
+  final onboardingSeen = await PrefsOnboardingStore.load();
+  final onboardingStore = await PrefsOnboardingStore.open();
+
   runApp(
     ProviderScope(
-      overrides: [appConfigProvider.overrideWithValue(config)],
+      overrides: [
+        appConfigProvider.overrideWithValue(config),
+        initialOnboardingSeenProvider.overrideWithValue(onboardingSeen),
+        onboardingStoreProvider.overrideWithValue(onboardingStore),
+      ],
       child: const FfGarageApp(),
     ),
   );

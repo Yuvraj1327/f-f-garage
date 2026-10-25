@@ -6,9 +6,11 @@ import '../../../core/widgets/async_view.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../data/models/driver_job.dart';
 import '../../../data/models/enums.dart';
+import '../../../data/models/place.dart';
 import '../../../data/providers/data_providers.dart';
 import '../../auth/presentation/widgets/auth_widgets.dart' show MessageBanner;
 import '../../booking/presentation/booking_widgets.dart';
+import '../../maps/location_map_card.dart';
 import '../providers/driver_providers.dart';
 import 'driver_widgets.dart';
 
@@ -171,6 +173,7 @@ class _Details extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _ProgressCard(status: job.status),
         SectionCard(
           title: 'Service',
           children: [
@@ -223,33 +226,92 @@ class _Details extends ConsumerWidget {
         SectionCard(
           title: 'Where',
           children: [
-            _ActionRow(
-              icon: Icons.directions_outlined,
-              tooltip: 'Open in maps',
+            Text(job.addressLine),
+            if (job.landmark != null) Text('Landmark: ${job.landmark}'),
+            Text(
+              '${job.city}${job.state == null ? '' : ', ${job.state}'} '
+              '${job.pincode}',
+            ),
+            if (hasLocation) ...[
+              const SizedBox(height: 8),
+              LocationMapCard(
+                point: MapPoint(job.latitude!, job.longitude!),
+                height: 180,
+              ),
+            ],
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              key: const ValueKey('navigate'),
               onPressed: () => open(
-                () => launcher.map(_mapQuery(job)),
+                () => launcher.directions(_mapQuery(job)),
                 'Address: ${_mapQuery(job)}',
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(job.addressLine),
-                  if (job.landmark != null) Text('Landmark: ${job.landmark}'),
-                  Text(
-                    '${job.city}${job.state == null ? '' : ', ${job.state}'} '
-                    '${job.pincode}',
-                  ),
-                ],
-              ),
+              icon: const Icon(Icons.navigation_outlined),
+              label: const Text('Navigate'),
             ),
-            if (hasLocation)
-              Text('Location: ${job.latitude}, ${job.longitude}'),
           ],
         ),
         if (job.notes != null)
           SectionCard(
             title: 'Customer notes',
             children: [Text(job.notes!)],
+          ),
+      ],
+    );
+  }
+}
+
+/// The driver's checklist for the visit: where this job is in the steps they
+/// record (on the way, service started, finished).
+class _ProgressCard extends StatelessWidget {
+  const _ProgressCard({required this.status});
+
+  final BookingStatus status;
+
+  static const _steps = <(String, BookingStatus)>[
+    ('Heading to the customer', BookingStatus.onTheWay),
+    ('Working on the vehicle', BookingStatus.inProgress),
+    ('Job finished', BookingStatus.completed),
+  ];
+
+  static const _order = [
+    BookingStatus.assigned,
+    BookingStatus.onTheWay,
+    BookingStatus.inProgress,
+    BookingStatus.completed,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    if (status == BookingStatus.cancelled) {
+      return const SizedBox.shrink();
+    }
+    final reached = _order.indexOf(status);
+    final scheme = Theme.of(context).colorScheme;
+    return SectionCard(
+      title: 'Job progress',
+      children: [
+        for (final (label, step) in _steps)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                Icon(
+                  reached >= _order.indexOf(step)
+                      ? Icons.check_circle
+                      : (reached + 1 == _order.indexOf(step)
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked),
+                  color: reached >= _order.indexOf(step)
+                      ? scheme.secondary
+                      : (reached + 1 == _order.indexOf(step)
+                          ? scheme.primary
+                          : scheme.outline),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Text(label)),
+              ],
+            ),
           ),
       ],
     );

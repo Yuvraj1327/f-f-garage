@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../core/network/auth_failure.dart';
 import '../../../core/utils/validators.dart';
+import '../../../data/services/auth_gateway.dart' show GoogleSignInResult;
 import '../providers/auth_controller.dart';
 import 'widgets/auth_widgets.dart';
+import 'widgets/google_sign_in_button.dart';
 
 class CustomerLoginScreen extends ConsumerStatefulWidget {
   const CustomerLoginScreen({super.key});
@@ -45,6 +47,32 @@ class _CustomerLoginScreenState extends ConsumerState<CustomerLoginScreen> {
           );
       // On success the router moves to the home screen and this screen is
       // disposed, so there is nothing more to do here.
+    } on AuthFailure catch (failure) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = failure.message;
+      });
+    }
+  }
+
+  Future<void> _google() async {
+    if (_busy) {
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final result =
+          await ref.read(authControllerProvider.notifier).signInWithGoogle();
+      if (!mounted) return;
+      // signedIn: the router moves on. redirecting (Web): the browser is on its
+      // way to Google, so keep the button disabled. cancelled: back to normal.
+      if (result == GoogleSignInResult.cancelled) {
+        setState(() => _busy = false);
+      }
     } on AuthFailure catch (failure) {
       if (!mounted) return;
       setState(() {
@@ -94,6 +122,7 @@ class _CustomerLoginScreenState extends ConsumerState<CustomerLoginScreen> {
             ),
           ),
         ),
+        GoogleSignInSection(busy: _busy, onPressed: _google),
         const SizedBox(height: 8),
         TextButton(
           onPressed: _busy ? null : () => context.go(AppRoutes.register),

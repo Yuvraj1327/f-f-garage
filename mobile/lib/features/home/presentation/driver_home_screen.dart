@@ -61,6 +61,7 @@ class DriverHomeScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              const _SummaryCard(),
               const Expanded(
                 child: TabBarView(
                   children: [
@@ -71,6 +72,59 @@ class DriverHomeScreen extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Today's Summary": real counts from the driver's own jobs. Left out while
+/// loading or if the numbers cannot be loaded (the lists below show errors).
+class _SummaryCard extends ConsumerWidget {
+  const _SummaryCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = ref.watch(driverSummaryProvider).valueOrNull;
+    if (summary == null) {
+      return const SizedBox.shrink();
+    }
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    Widget figure(String value, String label, Color color) => Expanded(
+          child: Column(
+            children: [
+              Text(
+                value,
+                style: textTheme.headlineMedium?.copyWith(color: color),
+              ),
+              Text(label, style: textTheme.bodySmall),
+            ],
+          ),
+        );
+    return Card(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 8, bottom: 8),
+              child: Text("Today's Summary", style: textTheme.titleSmall),
+            ),
+            Row(
+              children: [
+                figure('${summary.today}', 'Today', scheme.primary),
+                figure(
+                  '${summary.completedToday}',
+                  'Completed',
+                  scheme.secondary,
+                ),
+                figure('${summary.open}', 'Open jobs', scheme.tertiary),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -216,28 +270,64 @@ class _JobTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: ListTile(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         key: ValueKey('job-${job.id}'),
-        contentPadding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
-        title: Text(
-          '${job.code} - ${job.serviceName}',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(job.customerName),
-            Text('${formatDate(job.date)}, ${job.timeLabel}'),
-            Text(jobAddressLine(job), maxLines: 2, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 4),
-            BookingStatusChip(status: job.status),
-          ],
-        ),
-        isThreeLine: true,
-        trailing: const Icon(Icons.chevron_right),
         onTap: () => context.push(AppRoutes.driverBooking(job.id)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${job.code} - ${job.serviceName}',
+                      style: textTheme.titleMedium,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  BookingStatusChip(status: job.status),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(job.customerName, style: textTheme.bodyMedium),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.event_outlined,
+                      size: 16, color: scheme.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text('${formatDate(job.date)}, ${job.timeLabel}'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.place_outlined,
+                      size: 16, color: scheme.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      jobAddressLine(job),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

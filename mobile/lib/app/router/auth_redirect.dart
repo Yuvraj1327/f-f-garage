@@ -3,6 +3,7 @@ import '../../features/auth/providers/auth_controller.dart';
 import 'app_routes.dart';
 
 const Set<String> _publicRoutes = {
+  AppRoutes.onboarding,
   AppRoutes.login,
   AppRoutes.register,
   AppRoutes.driverLogin,
@@ -14,7 +15,8 @@ const Set<String> _publicRoutes = {
 ///
 /// - While the session is being checked (or the backend is unreachable) the
 ///   only reachable screen is the splash.
-/// - Signed-out users can reach only the login/register screens.
+/// - Signed-out users can reach only the onboarding, login and register
+///   screens; until the onboarding has been seen, login redirects to it.
 /// - Signed-in users are kept off the login screens, and each role is kept
 ///   inside its own area (a path prefix). The profile and support screens are shared.
 ///
@@ -24,12 +26,17 @@ String? authRedirect({
   required AuthStatus status,
   required UserRole? role,
   required String location,
+  bool onboardingSeen = true,
 }) {
   switch (status) {
     case AuthStatus.unknown:
     case AuthStatus.connectionError:
       return location == AppRoutes.splash ? null : AppRoutes.splash;
     case AuthStatus.unauthenticated:
+      // First launch: the welcome screens come before the sign-in screen.
+      if (!onboardingSeen && location == AppRoutes.login) {
+        return AppRoutes.onboarding;
+      }
       return _publicRoutes.contains(location) ? null : AppRoutes.login;
     case AuthStatus.authenticated:
       final home = homeFor(role);

@@ -10,9 +10,11 @@ import '../../../core/widgets/async_view.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/enums.dart';
+import '../../../data/models/place.dart';
 import '../../../data/providers/data_providers.dart';
 import '../../auth/presentation/widgets/auth_widgets.dart' show MessageBanner;
 import '../../payment/presentation/payment_widgets.dart';
+import '../../maps/location_map_card.dart';
 import '../../notifications/providers/notification_providers.dart';
 import '../providers/booking_providers.dart';
 import 'booking_timeline.dart';
@@ -246,12 +248,18 @@ class _DriverPhone extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
         Expanded(child: Text(phone, key: const ValueKey('driver-phone'))),
-        IconButton(
-          tooltip: 'Call driver',
-          icon: const Icon(Icons.call_outlined),
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            backgroundColor: scheme.secondary,
+            foregroundColor: scheme.onSecondary,
+            minimumSize: const Size(132, 44),
+          ),
+          icon: const Icon(Icons.call_outlined, size: 18),
+          label: const Text('Call driver'),
           onPressed: () async {
             final opened = await ref.read(contactLauncherProvider).call(phone);
             if (!opened && context.mounted) {
@@ -342,6 +350,12 @@ class _Body extends StatelessWidget {
             Text(booking.timeLabel),
             const SizedBox(height: 8),
             Text(addressText(booking)),
+            if (booking.hasLocation) ...[
+              const SizedBox(height: 8),
+              LocationMapCard(
+                point: MapPoint(booking.latitude!, booking.longitude!),
+              ),
+            ],
             if (booking.notes != null) ...[
               const SizedBox(height: 8),
               Text('Notes: ${booking.notes}'),

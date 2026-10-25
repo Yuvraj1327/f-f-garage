@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     bookings,
     catalog,
     health,
+    maps,
     notifications,
     payments,
     profiles,
@@ -34,3 +35,4 @@ api_router.include_router(assignments.admin_router)
 api_router.include_router(assignments.driver_router)
 api_router.include_router(notifications.router)
 api_router.include_router(support.router)
+api_router.include_router(maps.router)

@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/services/auth_gateway.dart';
+import '../../data/services/google_identity.dart';
 import '../config/app_config.dart';
 import '../network/api_client.dart';
 import '../network/session_events.dart';
@@ -19,6 +21,26 @@ final sessionEventsProvider = Provider<SessionEvents>((ref) {
   return events;
 });
 
+/// The phone's Google account chooser, or null when this build cannot offer it:
+/// Web (it redirects through Supabase instead) or missing Google client IDs in
+/// `.env`. "Continue with Google" then explains that it is not set up.
+final googleIdentityProvider = Provider<GoogleIdentityProvider?>((ref) {
+  final config = ref.watch(appConfigProvider);
+  if (kIsWeb ||
+      !config.googleSignInConfigured(
+        isWeb: false,
+        platform: defaultTargetPlatform,
+      )) {
+    return null;
+  }
+  return PluginGoogleIdentityProvider(
+    serverClientId: config.googleClientIdWeb,
+    clientId: defaultTargetPlatform == TargetPlatform.iOS
+        ? config.googleClientIdIos
+        : null,
+  );
+});
+
 /// The app's only contact with Supabase Auth. Falls back to an inert gateway
 /// when there is no Supabase configuration, so the app still starts.
 final authGatewayProvider = Provider<AuthGateway>((ref) {
@@ -26,7 +48,10 @@ final authGatewayProvider = Provider<AuthGateway>((ref) {
   if (!config.isSupabaseConfigured) {
     return const UnconfiguredAuthGateway();
   }
-  return SupabaseAuthGateway(Supabase.instance.client.auth);
+  return SupabaseAuthGateway(
+    Supabase.instance.client.auth,
+    google: ref.watch(googleIdentityProvider),
+  );
 });
 
 /// Where the API client gets the bearer token.

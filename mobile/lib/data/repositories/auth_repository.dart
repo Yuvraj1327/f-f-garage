@@ -7,6 +7,25 @@ import '../models/user_profile.dart';
 import '../services/auth_gateway.dart';
 import 'profile_repository.dart';
 
+/// How "Continue with Google" ended, with the profile when it signed in.
+class GoogleSignInOutcome {
+  const GoogleSignInOutcome._(this.result, this.profile);
+
+  const GoogleSignInOutcome.signedIn(UserProfile profile)
+      : this._(GoogleSignInResult.signedIn, profile);
+
+  const GoogleSignInOutcome.cancelled()
+      : this._(GoogleSignInResult.cancelled, null);
+
+  const GoogleSignInOutcome.redirecting()
+      : this._(GoogleSignInResult.redirecting, null);
+
+  final GoogleSignInResult result;
+
+  /// Set only when [result] is [GoogleSignInResult.signedIn].
+  final UserProfile? profile;
+}
+
 /// Sign-in, sign-up and session restore.
 ///
 /// Supabase proves *who* the user is; the backend profile says *what they may
@@ -71,6 +90,28 @@ class AuthRepository {
       password: password,
     );
     return _loadProfileFor(UserRole.admin);
+  }
+
+  /// "Continue with Google" on the customer screens. Supabase creates the
+  /// account the first time and signs an existing account in (an account with
+  /// the same verified email is linked, not duplicated). The backend profile is
+  /// then loaded and must be a customer's: a driver or administrator account is
+  /// signed straight back out, exactly as with the password sign-in.
+  ///
+  /// On Web the browser leaves for Google and returns later; start-up then
+  /// restores the session ([restoreSession]) and the router applies the role.
+  Future<GoogleSignInOutcome> signInWithGoogle() async {
+    final result = await _gateway.signInWithGoogle();
+    switch (result) {
+      case GoogleSignInResult.cancelled:
+        return const GoogleSignInOutcome.cancelled();
+      case GoogleSignInResult.redirecting:
+        return const GoogleSignInOutcome.redirecting();
+      case GoogleSignInResult.signedIn:
+        return GoogleSignInOutcome.signedIn(
+          await _loadProfileFor(UserRole.customer),
+        );
+    }
   }
 
   /// Creates a customer account. Returns the profile when the user is signed

@@ -30,7 +30,9 @@ from app.services.booking_service import BookingService
 from app.services.catalog_service import CatalogService
 from app.services.driver_admin_service import DriverAdminService
 from app.services.driver_work_service import DriverWorkService
+from app.services.geocoding_gateway import GeocodingGateway, GoogleGeocodingGateway
 from app.services.health_service import HealthService
+from app.services.maps_service import MapsService, RateLimiter
 from app.services.notification_service import NotificationService
 from app.services.payment_gateway import PaymentGateway, RazorpayGateway
 from app.services.payment_service import PaymentService
@@ -247,3 +249,39 @@ def get_driver_work_service(
 
 
 DriverWorkServiceDep = Annotated[DriverWorkService, Depends(get_driver_work_service)]
+
+
+def get_geocoding_gateway(settings: SettingsDep) -> GeocodingGateway | None:
+    """None when no Google Maps key is configured (lookups then answer 503)."""
+    if not settings.maps_enabled:
+        return None
+    return GoogleGeocodingGateway(settings)
+
+
+GeocodingGatewayDep = Annotated[GeocodingGateway | None, Depends(get_geocoding_gateway)]
+
+
+def get_maps_limiter(request: Request) -> RateLimiter:
+    """One limiter per running app, so the counts survive from request to request."""
+    limiter = getattr(request.app.state, "maps_limiter", None)
+    if limiter is None:
+        limiter = RateLimiter()
+        request.app.state.maps_limiter = limiter
+    return limiter
+
+
+MapsLimiterDep = Annotated[RateLimiter, Depends(get_maps_limiter)]
+
+
+def get_maps_service(
+    gateway: GeocodingGatewayDep,
+    areas: ServiceAreaServiceDep,
+    limiter: MapsLimiterDep,
+    settings: SettingsDep,
+) -> MapsService:
+    return MapsService(
+        gateway, areas, limiter, requests_per_minute=settings.maps_requests_per_minute
+    )
+
+
+MapsServiceDep = Annotated[MapsService, Depends(get_maps_service)]

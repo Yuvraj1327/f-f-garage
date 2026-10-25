@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../core/network/auth_failure.dart';
 import '../../../core/utils/validators.dart';
+import '../../../data/services/auth_gateway.dart' show GoogleSignInResult;
 import '../providers/auth_controller.dart';
 import 'widgets/auth_widgets.dart';
+import 'widgets/google_sign_in_button.dart';
 
 /// Customer registration. Drivers cannot register here.
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -58,6 +60,30 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           _busy = false;
           _confirmationSent = true;
         });
+      }
+    } on AuthFailure catch (failure) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = failure.message;
+      });
+    }
+  }
+
+  Future<void> _google() async {
+    if (_busy) {
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final result =
+          await ref.read(authControllerProvider.notifier).signInWithGoogle();
+      if (!mounted) return;
+      if (result == GoogleSignInResult.cancelled) {
+        setState(() => _busy = false);
       }
     } on AuthFailure catch (failure) {
       if (!mounted) return;
@@ -158,6 +184,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ],
             ),
           ),
+        ),
+        GoogleSignInSection(busy: _busy, onPressed: _google),
+        const SizedBox(height: 8),
+        Text(
+          'With Google you can add your mobile number later, in your profile. '
+          'We need it before your first booking.',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
         ),
         const SizedBox(height: 8),
         TextButton(

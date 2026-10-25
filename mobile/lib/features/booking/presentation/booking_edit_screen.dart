@@ -9,7 +9,9 @@ import '../../../core/widgets/dialogs.dart';
 import '../../../core/widgets/form_widgets.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/json_reader.dart';
+import '../../../data/models/place.dart';
 import '../../../data/providers/data_providers.dart';
+import '../../maps/location_field.dart';
 import '../providers/booking_providers.dart';
 import 'schedule_picker.dart';
 
@@ -56,11 +58,30 @@ class _EditFormState extends ConsumerState<_EditForm> {
   late final TextEditingController _landmark;
   late final TextEditingController _notes;
   BookingSchedule? _newSchedule;
+  late MapPoint? _point = _originalPoint;
   bool _changingTime = false;
   bool _busy = false;
   String? _error;
 
   Booking get _booking => widget.booking;
+
+  MapPoint? get _originalPoint =>
+      _booking.hasLocation ? MapPoint(_booking.latitude!, _booking.longitude!) : null;
+
+  /// A location the customer picked: remember the pin and take over its PIN code
+  /// (the booking's PIN code is what decides whether we can serve it).
+  void _onPicked(PickedLocation picked) {
+    final pin = picked.place?.pincode;
+    setState(() {
+      _point = picked.point;
+      if (pin != null) {
+        _pincode.text = pin;
+      }
+    });
+    if (pin != null && pin != _booking.pincode) {
+      showSnack(context, 'PIN code set to $pin to match the location');
+    }
+  }
 
   @override
   void initState() {
@@ -99,6 +120,17 @@ class _EditFormState extends ConsumerState<_EditForm> {
     final notes = _notes.text.trim();
     if (notes != (_booking.notes ?? '')) {
       changes['customer_notes'] = notes.isEmpty ? null : notes;
+    }
+    // The map pin. Changing the PIN code without choosing a new spot would leave
+    // the old pin pointing at the wrong place, so it is dropped.
+    final original = _originalPoint;
+    var point = _point;
+    if (changes.containsKey('pincode') && original != null && point == original) {
+      point = null;
+    }
+    if (point != original) {
+      changes['latitude'] = point?.latitude;
+      changes['longitude'] = point?.longitude;
     }
     final schedule = _newSchedule;
     if (schedule != null &&
@@ -196,6 +228,13 @@ class _EditFormState extends ConsumerState<_EditForm> {
           validator: (v) =>
               Validators.optionalText(v, label: 'landmark', max: 120),
           decoration: const InputDecoration(labelText: 'Landmark (optional)'),
+        ),
+        fieldGap,
+        LocationField(
+          point: _point,
+          enabled: !_busy,
+          onPicked: _onPicked,
+          onCleared: () => setState(() => _point = null),
         ),
         fieldGap,
         TextFormField(

@@ -5,6 +5,7 @@ import '../../../data/models/availability.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/catalog.dart';
 import '../../../data/models/enums.dart';
+import '../../../data/models/place.dart';
 import '../../../data/providers/data_providers.dart';
 
 /// Where the visit will happen. [city] and [areaName] come from the server's
@@ -16,6 +17,8 @@ class BookingAddress {
     required this.areaName,
     required this.city,
     this.landmark,
+    this.latitude,
+    this.longitude,
   });
 
   final String pincode;
@@ -23,6 +26,37 @@ class BookingAddress {
   final String? landmark;
   final String areaName;
   final String city;
+
+  /// The map pin, when the customer chose one (both or neither).
+  final double? latitude;
+  final double? longitude;
+
+  MapPoint? get point => latitude != null && longitude != null
+      ? MapPoint(latitude!, longitude!)
+      : null;
+}
+
+/// An address the customer used for an earlier booking, offered again on the
+/// address step. (Derived from their booking history: there is no separate
+/// address book.)
+class PreviousAddress {
+  const PreviousAddress({
+    required this.pincode,
+    required this.addressLine,
+    this.landmark,
+    this.latitude,
+    this.longitude,
+  });
+
+  final String pincode;
+  final String addressLine;
+  final String? landmark;
+  final double? latitude;
+  final double? longitude;
+
+  MapPoint? get point => latitude != null && longitude != null
+      ? MapPoint(latitude!, longitude!)
+      : null;
 }
 
 /// The chosen visit time.
@@ -145,6 +179,34 @@ final bookableDaysProvider = FutureProvider.autoDispose<List<DayAvailability>>(
         );
   },
 );
+
+/// Up to four different addresses from the customer's recent bookings, newest
+/// first. A failure just means none are offered; booking never depends on it.
+final previousAddressesProvider =
+    FutureProvider.autoDispose<List<PreviousAddress>>((ref) async {
+  final page = await ref.watch(bookingRepositoryProvider).list(limit: 30);
+  final seen = <String>{};
+  final found = <PreviousAddress>[];
+  for (final booking in page.items) {
+    final key = '${booking.pincode}|${booking.addressLine.trim().toLowerCase()}';
+    if (!seen.add(key)) {
+      continue;
+    }
+    found.add(
+      PreviousAddress(
+        pincode: booking.pincode,
+        addressLine: booking.addressLine,
+        landmark: booking.landmark,
+        latitude: booking.latitude,
+        longitude: booking.longitude,
+      ),
+    );
+    if (found.length == 4) {
+      break;
+    }
+  }
+  return found;
+});
 
 final bookingProvider = FutureProvider.autoDispose.family<Booking, String>(
   (ref, id) => ref.watch(bookingRepositoryProvider).get(id),

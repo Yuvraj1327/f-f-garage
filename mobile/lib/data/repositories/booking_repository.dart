@@ -27,6 +27,10 @@ class BookingRepository {
       'pincode': draft.pincode,
       'address_line': draft.addressLine,
       if (landmark != null && landmark.isNotEmpty) 'landmark': landmark,
+      if (draft.latitude != null && draft.longitude != null) ...{
+        'latitude': draft.latitude,
+        'longitude': draft.longitude,
+      },
       'scheduled_date': formatApiDate(draft.date),
       'time_slot_id': draft.timeSlotId,
       if (notes != null && notes.isNotEmpty) 'customer_notes': notes,

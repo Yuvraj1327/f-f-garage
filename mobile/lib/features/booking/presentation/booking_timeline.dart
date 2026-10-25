@@ -194,7 +194,7 @@ class _StepRow extends StatelessWidget {
     switch (step.state) {
       case StepState.done:
         icon = Icons.check_circle;
-        color = scheme.primary;
+        color = scheme.secondary;
       case StepState.active:
         icon = Icons.radio_button_checked;
         color = scheme.primary;

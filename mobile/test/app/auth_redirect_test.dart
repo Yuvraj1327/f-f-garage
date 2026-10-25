@@ -77,6 +77,55 @@ void main() {
     });
   });
 
+  group('onboarding', () {
+    String? go(String location, {required bool seen, AuthStatus? status}) =>
+        authRedirect(
+          status: status ?? AuthStatus.unauthenticated,
+          role: null,
+          location: location,
+          onboardingSeen: seen,
+        );
+
+    test('a first-time visitor is sent from login to the welcome screens', () {
+      expect(go(AppRoutes.login, seen: false), AppRoutes.onboarding);
+      expect(go(AppRoutes.onboarding, seen: false), isNull);
+    });
+
+    test('register and the staff logins stay reachable before it is seen', () {
+      for (final route in [
+        AppRoutes.register,
+        AppRoutes.driverLogin,
+        AppRoutes.adminLogin,
+      ]) {
+        expect(go(route, seen: false), isNull, reason: route);
+      }
+    });
+
+    test('once seen, login is login again', () {
+      expect(go(AppRoutes.login, seen: true), isNull);
+      expect(go(AppRoutes.onboarding, seen: true), isNull);
+    });
+
+    test('a signed-in user never sees it', () {
+      expect(
+        authRedirect(
+          status: AuthStatus.authenticated,
+          role: UserRole.customer,
+          location: AppRoutes.onboarding,
+          onboardingSeen: false,
+        ),
+        AppRoutes.customerHome,
+      );
+    });
+
+    test('while the session is checked only the splash is shown', () {
+      expect(
+        go(AppRoutes.onboarding, seen: false, status: AuthStatus.unknown),
+        AppRoutes.splash,
+      );
+    });
+  });
+
   group('driver', () {
     test('lands on the driver home and cannot open the customer area', () {
       expect(

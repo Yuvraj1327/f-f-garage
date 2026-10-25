@@ -28,9 +28,9 @@ ff-garage/
     app/
       main.py                      app factory: CORS, docs, /api/v1 mount
       core/        config.py, logging.py, security.py (JWT verification), errors.py
-      api/         deps.py, auth.py (current user + role guards), v1/endpoints/{health,profiles,admin_drivers,catalog,admin_catalog,admin_service_areas,admin_availability,bookings}.py
+      api/         deps.py, auth.py (current user + role guards), v1/endpoints/{health,profiles,admin_drivers,catalog,admin_catalog,admin_service_areas,admin_availability,bookings,maps}.py
       schemas/     health, profile, driver, catalog, service_area, availability, booking, common (API contracts)
-      services/    health, profile, driver_admin, catalog, service_area, availability, booking (business logic)
+      services/    health, profile, driver_admin, catalog, service_area, availability, booking, maps + geocoding_gateway (business logic)
       db/          supabase.py, postgrest.py (error mapping), *_repository.py, auth_admin.py
       domain/      enums.py, availability.py (pure slot-availability rules), booking.py (status transitions, cancel/edit rules)
     tests/
@@ -42,7 +42,7 @@ ff-garage/
       app/         app.dart, router/, theme/
       core/        config/, constants/, network/ (ApiClient, ApiException, AuthFailure), providers/, utils/validators.dart
       data/        models/, services/ (API calls, AuthGateway), repositories/, providers/
-      features/    auth/ (splash, customer/driver/admin login, controller), home/, profile/, catalog/ (customer browse + PIN check), booking/ (address, schedule, summary, history, details, edit), admin/ (services, areas, availability)
+      features/    auth/ (splash, customer/driver/admin login, controller), home/, profile/, catalog/ (customer browse + PIN check), booking/ (address, schedule, summary, history, details, edit), maps/ (map picker, map card, location field), admin/ (services, areas, availability)
     test/
   supabase/
     migrations/                    11 versioned SQL migrations (06 = auth hardening, 07 = categories + availability, 08 = booking workflow, 09 = payment workflow, 10 = driver assignment workflow, 11 = tracking + notifications)
@@ -355,6 +355,147 @@ The screen also lists four short "common questions". If the device cannot open a
 
 **Platforms.** Android and iOS are the supported targets. Flutter Web is not a target of this project: `razorpay_flutter` has no web support, so payment cannot work there; the rest of the UI is written to be width-responsive.
 
+## Branding, onboarding and theme
+
+- `mobile/assets/images/logo.jpg` is the F&F Two Wheeler Garage logo (splash, sign-in and sign-up, onboarding) and `onboarding_hero.jpg` the onboarding picture. Both are shown with `BoxFit.contain`, so they are never stretched or cropped. The logo has a white background, so it sits on white screens. `BrandLogo` falls back to a plain badge if the file is missing.
+- First launch opens `/onboarding` (three swipeable messages, Skip, Get Started -> sign-up, Login -> sign-in). It is shown once per install (`shared_preferences`); after that the app opens on sign-in. Signed-in users never see it.
+- The app always uses the **light** theme, whatever the device's dark-mode setting.
+
+## Reference UI and design system
+
+The app follows one design reference (blue primary, green success, orange accent, red error, navy text on a light background, Inter type, rounded white cards, pill badges).
+
+- **Tokens.** `lib/app/theme/app_colors.dart` holds the palette; `app_theme.dart` turns it into the Material 3 theme (Inter type scale, 52 dp filled and outlined buttons, filled inputs with a blue focus border, stadium chips, 68 dp navigation bar). Dark mode uses lighter tints of the same colours.
+- **Font.** Inter (Regular, Medium, SemiBold, Bold) is bundled in `assets/fonts/` and declared in `pubspec.yaml`; its SIL Open Font License is in `assets/fonts/OFL-Inter.txt`. No network is needed to load it.
+- **Reusable widgets** (`lib/core/widgets/`): `StatusBadge`, `FilterPill`, `SectionHeader`, `StatTile` / `StatGrid`, `ServiceThumb`, `BrandLogo`, `CustomerBottomNav`. `BookingStatusChip` renders a `StatusBadge` (pending orange, confirmed / on the way / in progress blue, completed green, cancelled red) with the same icons as before.
+- **Customer.** Splash, login and sign-up (shared auth scaffold with the logo), home (hero, shortcuts, PIN check, categories, popular services from the real catalogue), service list with search and category chips, booking with date and time chips, booking detail with the timeline and a "Call driver" button, My Bookings with filter pills and status badges, support and profile. The bottom bar (Home, My Bookings, Support, Profile) appears only for customers; drivers and admins who open the shared Profile or Support screens get no customer bar.
+- **Driver.** Sign-in, dashboard with "Today's Summary" (counts worked out from the driver's own jobs), job cards, job screen with a progress checklist, a Navigate button and the pinned next-step button.
+- **Admin.** Same app, separate role: dashboard with booking and driver counts (counted by the server, no booking data downloaded), Bookings (search, filter pills, cards), Services (cards with an on/off switch) and Drivers (cards with an Active / Inactive badge), plus areas and availability.
+- **States.** Loading (spinner or list skeleton), empty (icon and message), error (message and **Retry**) and success (snack bar) come from the shared widgets on every list screen.
+
+Not in the app, because the backend has no such feature (and the brief said not to change backend behaviour): phone-OTP and Google sign-in, driver Accept / Decline of requests, an online toggle, driver earnings, an in-app map screen, chat, and admin revenue or trend charts.
+
+## Google sign-in and Google Maps
+
+Two customer-facing features that need Google Cloud and Supabase settings you make once. **Nothing here is a secret in the repository**: real keys live in the git-ignored `mobile/.env` (public client IDs and restricted Maps SDK keys) and `backend/.env` (the server Geocoding key); the Google client *secret* lives only in the Supabase dashboard.
+
+### Google sign-in ("Continue with Google")
+
+The button appears on the customer login and sign-up screens only. Drivers and the administrator keep their own sign-in.
+
+**How it works**
+
+| Platform | Flow |
+|---|---|
+| Android, iOS | The phone's Google account chooser returns a Google ID token; the app hands it to Supabase (`signInWithIdToken`), so there is no browser round trip. `GOOGLE_CLIENT_ID_WEB` is passed to Google as the *server client ID* (the token is then issued for the Web client, which Supabase verifies); on iOS `GOOGLE_CLIENT_ID_IOS` is passed as the app's client ID. The Android client ID is matched by Google from your package name + SHA-1, so it is not passed to the SDK, but it must exist and be in `.env`; together with the Web client ID that is what tells the app Google sign-in is set up on Android. |
+| Web | Full-page redirect through Supabase (`signInWithOAuth`, PKCE) and back to the site's own origin. The session is restored on return and the normal role-based routing applies. |
+
+After Supabase signs the user in, the app loads the profile from the backend and enforces the role, exactly like password sign-in: a customer goes to the customer home. On the phone apps a driver or administrator account used on the customer screen is signed straight back out with a clear message. Cancelling the account chooser is silent (no error). A Google account whose verified email already has a password account is **linked** to it by Supabase, not duplicated.
+
+Google accounts have no phone number, and a booking needs one, so a customer who signed up with Google adds it on the **Profile** screen first: until the profile has a name and a mobile number the server refuses to create a booking and the app shows its message "Add your name and mobile number in your profile before booking". The profile name is taken from the Google account when Supabase provides it.
+
+**1. Google Cloud Console** (APIs & Services)
+
+1. *OAuth consent screen*: choose External, fill in the app name and support email, add the scopes `openid`, `email`, `profile`. While the app is in *Testing*, add your test accounts; publish it before going live.
+2. *Credentials > Create credentials > OAuth client ID*, three times:
+   - **Web application**. *Authorized redirect URIs*: `https://<your-project-ref>.supabase.co/auth/v1/callback`. (*Authorized JavaScript origins*: your site origins, e.g. `http://localhost:3000` and your production URL.) Note the client ID **and the client secret**.
+   - **Android**. Package name: your applicationId (`com.ffgarage.ff_garage` if you ran the `flutter create` command below). SHA-1: from `cd android && ./gradlew signingReport` for the debug key, and add the release/Play App Signing SHA-1 when you ship. One Android client can hold one fingerprint, so create one per fingerprint.
+   - **iOS**. Bundle ID: the iOS bundle identifier (`com.ffgarage.ffGarage` unless you changed it).
+
+**2. Supabase dashboard**
+
+1. *Authentication > Providers > Google*: enable it. Client ID = the **Web** client ID, Client Secret = the **Web** client secret. In *Authorized Client IDs* list the Web, Android and iOS client IDs, comma-separated, Web first.
+2. iOS only: the `google_sign_in` plugin does not let the app supply a nonce, so turn on **Skip nonce checks** in the same Google provider panel. (Android and Web do not need it. Leave it off if you do not ship iOS.)
+3. *Authentication > URL Configuration*: set the **Site URL** to your production web URL, and add every origin the web build runs on to **Redirect URLs** (for example `http://localhost:3000` and `https://app.example.com`). The web flow returns to `Uri.base.origin`, and Supabase refuses redirects that are not on this list.
+4. Your existing sign-up and email-confirmation settings apply to Google sign-in as well.
+
+**3. `mobile/.env`** (public identifiers, not secrets)
+
+```
+GOOGLE_CLIENT_ID_WEB=1234-abcd.apps.googleusercontent.com
+GOOGLE_CLIENT_ID_ANDROID=1234-efgh.apps.googleusercontent.com
+GOOGLE_CLIENT_ID_IOS=1234-ijkl.apps.googleusercontent.com
+```
+
+Then run `python3 tool/configure_platforms.py` (see below): for iOS it writes the client ID and its *reversed* form (the URL scheme Google redirects back to) into the git-ignored `ios/Flutter/Secrets.xcconfig` and patches `Info.plist` to use them.
+
+If the IDs for a platform are missing the button is still shown and tapping it explains that Google sign-in is not set up on this build; nothing crashes. A client ID is not a secret but the Google client **secret** is: if `GOOGLE_CLIENT_SECRET` (or anything with `SECRET` in its name) is put in `mobile/.env`, the app refuses to start.
+
+**Limitations to know about.** (a) On Web the role check happens when the session is restored after the redirect, and any active role is accepted there, so an administrator who signs in with the Google account that owns the admin email lands in the admin area (they did authenticate as that verified email; drivers have no real mailbox, so they cannot). The backend enforces roles on every request regardless. (b) The official multi-colour Google "G" logo asset is not bundled; the button uses a Material icon. Replace it with Google's brand asset to follow their branding guidelines exactly.
+
+### Google Maps
+
+Where maps appear:
+
+- **Booking, address step and "Change booking"**: "Pick on map" (full-screen picker with a fixed centre pin, address search, "My location"), "Use my current location", a preview of the chosen pin, and "Remove pin". The picker looks up the address and **PIN code** at the pin through the backend; the PIN code is checked against your service areas and a pin in an area you do not serve cannot be confirmed. A PIN code typed or pasted into the address is also picked out automatically.
+- **Saved addresses**: "Use a previous address" offers up to four different addresses (with their map pins) from the customer's earlier bookings. There is no separate address-book table: they come from booking history.
+- **Booking summary, booking details, admin booking details**: a small map with the pin and "Open in Maps".
+- **Driver job**: a map with the customer's pin, "Open in Maps" and **Navigate** (turn-by-turn directions in the phone's maps app, from the pin if there is one, else from the written address).
+
+The map pin is optional and never replaces the written address or the PIN code: the existing PIN-code validation, booking rules, FastAPI role checks and Supabase RLS are unchanged (latitude/longitude were already part of the booking API and table).
+
+**There are two kinds of Google key. A backend key alone cannot draw a map in Flutter.**
+
+| Key | Where | Used for | Restrict it by |
+|---|---|---|---|
+| `GOOGLE_MAPS_API_KEY` | `backend/.env` | Server-side address search and reverse lookup (**Geocoding API**) through `GET /api/v1/maps/geocode` and `/maps/reverse`. Never sent to the app and never logged. | API restriction: **Geocoding API** only. Application restriction: **IP addresses** of your server |
+| `GOOGLE_MAPS_KEY_ANDROID` | `mobile/.env` | Draws the map on Android (**Maps SDK for Android**) | API: Maps SDK for Android. App: **Android apps**, package name + SHA-1 |
+| `GOOGLE_MAPS_KEY_IOS` | `mobile/.env` | Draws the map on iOS (**Maps SDK for iOS**) | API: Maps SDK for iOS. App: **iOS apps**, bundle ID |
+| `GOOGLE_MAPS_KEY_WEB` | `mobile/.env` | Draws the map on Flutter Web (**Maps JavaScript API**) | API: Maps JavaScript API. App: **Websites** (HTTP referrers), e.g. `https://app.example.com/*` and `http://localhost:*/*` while developing |
+
+The three app keys are *public by nature* (they are inside the app or the web page and can be extracted). That is fine **only because they are restricted**: do not skip the restrictions, and use a separate key per platform so one leak does not unlock the others. Set a daily quota / budget alert in Google Cloud.
+
+**1. Google Cloud Console.** Create a project, enable billing, and enable these APIs: *Maps SDK for Android*, *Maps SDK for iOS*, *Maps JavaScript API*, *Geocoding API*. Create the four keys above with the restrictions shown.
+
+**2. Backend.** In `backend/.env`:
+
+```
+GOOGLE_MAPS_API_KEY=your_server_side_maps_key
+```
+
+Leave it blank (or the placeholder) and address lookup answers `503` "Address lookup is not available right now. You can still type your address."; the app then simply lets the customer type the address. The endpoints are customer-only, rate-limited per user (`MAPS_REQUESTS_PER_MINUTE`, default 30, per server process), only search India, and Google failures are reported as a generic 503 with no key or upstream text.
+
+**3. Flutter.** In `mobile/.env`:
+
+```
+GOOGLE_MAPS_KEY_ANDROID=AIza...
+GOOGLE_MAPS_KEY_IOS=AIza...
+GOOGLE_MAPS_KEY_WEB=AIza...
+```
+
+A platform with no key simply has no maps: the screens show the coordinates and the "Open in Maps" / "Navigate" buttons, which work without any key, and the typed address form is unchanged.
+
+**4. Native files.** This repository does not commit `android/`, `ios/` or `web/`; `flutter create` generates them. After generating them, one script puts the keys and the permissions in place **without writing any key into a committed file**:
+
+```bash
+cd mobile
+flutter create --platforms=android,ios,web --org com.ffgarage --project-name ff_garage .
+cp .env.example .env            # then fill in the Google lines
+python3 tool/configure_platforms.py            # patch
+python3 tool/configure_platforms.py --check    # just report
+```
+
+It is safe to re-run (each patch applies once; a generated file that does not look as expected is reported and left alone) and prints key *names*, never values. It does the following:
+
+| Platform | Written / patched | Git-ignored file holding the real value |
+|---|---|---|
+| Android | `AndroidManifest.xml`: `INTERNET`, `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION` and the `com.google.android.geo.API_KEY` meta-data `${MAPS_API_KEY}`; `app/build.gradle(.kts)`: manifest placeholder read from `local.properties` | `android/local.properties` |
+| iOS | `Info.plist`: `GMSApiKey`, `GIDClientID`, `NSLocationWhenInUseUsageDescription`, Google URL scheme; `AppDelegate.swift`: `GMSServices.provideAPIKey` (only when a key is set); `Podfile`: iOS 14 (needed by the Maps SDK); the three `.xcconfig` files include `Secrets.xcconfig` | `ios/Flutter/Secrets.xcconfig` |
+| Web | `index.html`: loads `maps_config.js`, which loads the Maps JavaScript API | `web/maps_config.js` |
+
+`.gitignore` already lists `mobile/ios/Flutter/Secrets.xcconfig`, `mobile/web/maps_config.js` and `mobile/android/local.properties`, so none of them is committed. (The web key is still visible to anyone who opens the site's network tab. That is why it must have an HTTP-referrer restriction.)
+
+*By hand instead of the script*:
+- **Android** `android/app/src/main/AndroidManifest.xml`: add `<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>` and `ACCESS_COARSE_LOCATION` above `<application>`, and inside it `<meta-data android:name="com.google.android.geo.API_KEY" android:value="${MAPS_API_KEY}"/>`; in `android/app/build.gradle(.kts)` `defaultConfig` set `manifestPlaceholders["MAPS_API_KEY"]` (Kotlin) / `manifestPlaceholders += [MAPS_API_KEY: ...]` (Groovy) from `android/local.properties`, where you write `MAPS_API_KEY=<key>`.
+- **iOS** `ios/Runner/Info.plist`: `NSLocationWhenInUseUsageDescription` (the text customers see), `GMSApiKey` = `$(GOOGLE_MAPS_API_KEY)`, `GIDClientID` = `$(GOOGLE_IOS_CLIENT_ID)`, a `CFBundleURLTypes` entry whose scheme is `$(GOOGLE_IOS_REVERSED_CLIENT_ID)`; create `ios/Flutter/Secrets.xcconfig` with those three variables and `#include? "Secrets.xcconfig"` in `Debug/Release/Profile.xcconfig`; in `AppDelegate.swift` add `import GoogleMaps` and call `GMSServices.provideAPIKey(...)` before `GeneratedPluginRegistrant.register`; set `platform :ios, '14.0'` in the Podfile.
+- **Web** `web/index.html`: load the Maps JavaScript API with your Web key before `flutter_bootstrap.js`.
+
+The Phase 8 `url_launcher` query entries (above, in "UI polish and support") are needed as well, because "Open in Maps" and "Navigate" open `https` links in the phone's maps app.
+
+**Location permission and fallbacks.** "Use my current location" and "My location" ask for *while-in-use* location permission, only when tapped. If location is switched off, refused, blocked for good, slow (15 s timeout) or not available, the screen says so in one sentence and offers **Settings** where that can help; the customer can always pick on the map, search, or type the address. Address lookup failures never block a booking: the pin can still be used and the address typed. A lost map or lookup service never blocks the booking form.
+
+**Not verified here.** The Flutter code and its tests (the fake map and location service used in `test/features/maps_test.dart`) were written without a Flutter SDK, so `flutter pub get`, `flutter analyze` and `flutter test` have **not been run**, and the real Google map and the two Google flows have not been exercised on a device or against real Google/Supabase projects. Run `flutter analyze && flutter test` first, then try both features on an emulator before relying on them.
+
 ## Environment variables
 
 Backend: copy `backend/.env.example` to `backend/.env`.
@@ -384,6 +525,10 @@ Backend: copy `backend/.env.example` to `backend/.env`.
 | `PAYMENT_CHECKOUT_NAME` | no | Business name shown in the checkout window |
 | `GARAGE_NAME`, `GARAGE_PHONE`, `GARAGE_WHATSAPP`, `GARAGE_EMAIL`, `GARAGE_ADDRESS`, `GARAGE_HOURS` | no | Contact details for the Help & support screen (see Phase 8). Blank = hidden |
 | `PAYMENT_ATTEMPT_REUSE_MINUTES` | no | An open attempt younger than this is reused instead of creating a new gateway order. Default 30 |
+| `GOOGLE_MAPS_API_KEY` | for address lookup | **Server-side** Geocoding key, restricted to the Geocoding API and your server IP. Blank or the placeholder = lookup off (503, customers type the address). Never goes to Flutter |
+| `GOOGLE_MAPS_BASE_URL` | no | Default `https://maps.googleapis.com/maps/api` (must be https) |
+| `GOOGLE_MAPS_TIMEOUT_SECONDS` | no | Google request timeout. Default 5 |
+| `MAPS_REQUESTS_PER_MINUTE` | no | Per-customer limit on address lookups, per server process. Default 30 |
 
 Flutter (public values only), via `mobile/.env` (copy from `mobile/.env.example`; git-ignored). It is loaded with `flutter_dotenv` before the app starts and **is bundled into the app, so anyone can read it**. Never put a Supabase service-role key, database password, JWT secret or payment-gateway secret in it: those stay in `backend/.env`.
 
@@ -392,6 +537,8 @@ Flutter (public values only), via `mobile/.env` (copy from `mobile/.env.example`
 | `API_BASE_URL` | Backend URL including `/api/v1`. Default `http://10.0.2.2:8000/api/v1` (Android emulator -> host). iOS simulator: `http://localhost:8000/api/v1` |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Required. Public anon key only |
 | `DRIVER_EMAIL_DOMAIN` | Optional; default `drivers.ffgarage.invalid`. Must match the backend |
+| `GOOGLE_CLIENT_ID_WEB`, `GOOGLE_CLIENT_ID_ANDROID`, `GOOGLE_CLIENT_ID_IOS` | Google OAuth client IDs (public). Empty or the `YOUR-...` placeholder = Google sign-in not set up on that platform. See "Google sign-in" |
+| `GOOGLE_MAPS_KEY_ANDROID`, `GOOGLE_MAPS_KEY_IOS`, `GOOGLE_MAPS_KEY_WEB` | Maps SDK keys, one per platform, **restricted in Google Cloud** (they are public by nature). Empty = no embedded maps on that platform (links still work). Applied to the native files by `tool/configure_platforms.py`. See "Google Maps" |
 
 If `.env` is missing, still has the example placeholders, has a malformed URL, holds a service-role key in `SUPABASE_ANON_KEY`, or contains a variable whose name looks like a server secret (`SERVICE_ROLE`, `SECRET`, `PASSWORD`, `DATABASE_URL`, `JWT`...), the app does not crash: it shows an "App configuration needed" screen that names the problems (never the values) and how to fix them.
 
@@ -422,9 +569,10 @@ The native `android/` and `ios/` folders are not committed by Phase 1; generate 
 
 ```bash
 cd mobile
-flutter create --platforms=android,ios --org com.ffgarage --project-name ff_garage .
+flutter create --platforms=android,ios,web --org com.ffgarage --project-name ff_garage .
 flutter pub get
 cp .env.example .env     # then edit (required: .env is a bundled asset)
+python3 tool/configure_platforms.py   # Google Maps keys + permissions into the native folders
 flutter run
 ```
 

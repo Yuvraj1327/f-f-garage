@@ -4,13 +4,13 @@ enum AuthFailureType {
   emailAlreadyRegistered,
   weakPassword,
   rateLimited,
-  invalidEmail,
-  signupDisabled,
   network,
   wrongAccountType,
   accountDisabled,
   sessionExpired,
   notConfigured,
+  googleNotConfigured,
+  googleFailed,
   unknown,
 }
 
@@ -45,14 +45,6 @@ class AuthFailure implements Exception {
     AuthFailureType.rateLimited,
     'Too many attempts. Please wait a few minutes and try again.',
   );
-  static const AuthFailure invalidEmail = AuthFailure(
-    AuthFailureType.invalidEmail,
-    'That email address was not accepted. Check it for typos or use a different one.',
-  );
-  static const AuthFailure signupDisabled = AuthFailure(
-    AuthFailureType.signupDisabled,
-    'New sign-ups are turned off right now. Please contact the garage.',
-  );
   static const AuthFailure network = AuthFailure(
     AuthFailureType.network,
     'Unable to reach the server. Check your internet connection and try again.',
@@ -81,6 +73,16 @@ class AuthFailure implements Exception {
   static const AuthFailure notConfigured = AuthFailure(
     AuthFailureType.notConfigured,
     'This build of the app is not configured for sign-in.',
+  );
+  static const AuthFailure googleNotConfigured = AuthFailure(
+    AuthFailureType.googleNotConfigured,
+    'Google sign-in is not set up in this version of the app yet. Please sign '
+    'in with your email and password.',
+  );
+  static const AuthFailure googleFailed = AuthFailure(
+    AuthFailureType.googleFailed,
+    'Google sign-in did not work. Please try again, or use your email and '
+    'password.',
   );
   static const AuthFailure unknown = AuthFailure(
     AuthFailureType.unknown,

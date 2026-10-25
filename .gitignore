@@ -42,6 +42,10 @@ mobile/ios/.symlinks/
 mobile/ios/Flutter/ephemeral/
 mobile/ios/Flutter/Generated.xcconfig
 mobile/ios/Flutter/flutter_export_environment.sh
+# Written by mobile/tool/configure_platforms.py from mobile/.env (Maps and Google
+# sign-in values for iOS); never committed.
+mobile/ios/Flutter/Secrets.xcconfig
+mobile/web/maps_config.js
 mobile/ios/**/xcuserdata/
 mobile/ios/**/DerivedData/
 

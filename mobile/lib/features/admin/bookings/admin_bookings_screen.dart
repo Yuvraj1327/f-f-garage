@@ -6,6 +6,8 @@ import '../../../app/router/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/async_view.dart';
 import '../../../core/widgets/dialogs.dart';
+import '../../../core/widgets/filter_pill.dart';
+import '../../../core/widgets/service_icon.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/providers/data_providers.dart';
@@ -157,11 +159,11 @@ class _AdminBookingsScreenState extends ConsumerState<AdminBookingsScreen> {
                   for (final filter in AdminBookingFilter.values)
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
+                      child: FilterPill(
                         key: ValueKey('filter-${filter.name}'),
-                        label: Text(filter.label),
+                        label: filter.label,
                         selected: _filter == filter,
-                        onSelected: (_) {
+                        onSelected: () {
                           if (_filter == filter) return;
                           setState(() => _filter = filter);
                           _reload();
@@ -231,6 +233,7 @@ class _BookingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     final assignment = booking.assignment;
     final driverText = assignment == null
         ? (booking.isCancelled ? 'No driver' : 'No driver assigned')
@@ -238,21 +241,45 @@ class _BookingTile extends StatelessWidget {
             '${assignment.driverIsActive ? '' : ' (switched off)'}';
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: ListTile(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         key: ValueKey('booking-${booking.id}'),
-        title: Text('${booking.code} - ${booking.serviceName}'),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(booking.customerName),
-            Text('${formatDate(booking.date)}, ${booking.timeLabel}'),
-            Text(driverText, key: ValueKey('driver-line-${booking.id}')),
-            const SizedBox(height: 4),
-            BookingStatusChip(status: booking.status),
-          ],
-        ),
-        isThreeLine: true,
         onTap: () => context.push(AppRoutes.adminBooking(booking.id)),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ServiceThumb(category: booking.serviceName, size: 48),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${booking.code} - ${booking.serviceName}',
+                      style: textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(booking.customerName, style: textTheme.bodyMedium),
+                    Text(
+                      '${formatDate(booking.date)}, ${booking.timeLabel}',
+                      style: textTheme.bodySmall,
+                    ),
+                    Text(
+                      driverText,
+                      key: ValueKey('driver-line-${booking.id}'),
+                      style: textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    BookingStatusChip(status: booking.status),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
       ),
     );
   }

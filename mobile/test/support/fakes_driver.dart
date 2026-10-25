@@ -58,6 +58,8 @@ DriverJob driverJob({
   int number = 1,
   BookingStatus status = BookingStatus.assigned,
   BookingStatus? next = BookingStatus.onTheWay,
+  double? latitude,
+  double? longitude,
 }) =>
     DriverJob(
       id: id,
@@ -70,6 +72,8 @@ DriverJob driverJob({
       customerName: 'Test User',
       customerPhone: '+919876543210',
       addressLine: '12 MG Road',
+      latitude: latitude,
+      longitude: longitude,
       city: 'Bengaluru',
       pincode: '560001',
       date: DateTime(2026, 10, 21),

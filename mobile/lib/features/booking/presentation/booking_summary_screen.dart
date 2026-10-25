@@ -9,6 +9,7 @@ import '../../../data/models/booking.dart';
 import '../../../data/providers/data_providers.dart';
 import '../../auth/presentation/widgets/auth_widgets.dart' show MessageBanner;
 import '../providers/booking_providers.dart';
+import '../../maps/location_map_card.dart';
 import 'booking_widgets.dart';
 
 /// Step 3 of booking: review everything, tick optional add-ons, confirm.
@@ -59,6 +60,8 @@ class _BookingSummaryScreenState extends ConsumerState<BookingSummaryScreen> {
               pincode: address.pincode,
               addressLine: address.addressLine,
               landmark: address.landmark,
+              latitude: address.latitude,
+              longitude: address.longitude,
               date: schedule.date,
               timeSlotId: schedule.slotId,
               notes: _notes.text,
@@ -171,6 +174,10 @@ class _Content extends ConsumerWidget {
                   Text(address.addressLine),
                   if (address.landmark != null) Text(address.landmark!),
                   Text('${address.areaName}, ${address.city} ${address.pincode}'),
+                  if (address.point != null) ...[
+                    const SizedBox(height: 8),
+                    LocationMapCard(point: address.point!, height: 140),
+                  ],
                 ],
               ),
               if (selectable.isNotEmpty)

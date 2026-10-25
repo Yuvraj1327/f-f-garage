@@ -9,6 +9,10 @@ abstract class ContactLauncher {
   Future<bool> whatsapp(String phone, {String? message});
   Future<bool> email(String address, {String? subject});
   Future<bool> map(String address);
+
+  /// Turn-by-turn directions to [destination] (an address or "lat,lng") in the
+  /// device's maps app, starting from where the device is now.
+  Future<bool> directions(String destination);
 }
 
 class UrlContactLauncher implements ContactLauncher {
@@ -43,6 +47,15 @@ class UrlContactLauncher implements ContactLauncher {
         Uri.https('www.google.com', '/maps/search/', {
           'api': '1',
           'query': address,
+        }),
+      );
+
+  @override
+  Future<bool> directions(String destination) => _open(
+        Uri.https('www.google.com', '/maps/dir/', {
+          'api': '1',
+          'destination': destination,
+          'travelmode': 'driving',
         }),
       );
 

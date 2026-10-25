@@ -1,6 +1,7 @@
 /// Route paths. Add one constant per screen as features are built.
 abstract final class AppRoutes {
   static const String splash = '/splash';
+  static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String register = '/register';
   static const String driverLogin = '/driver-login';
@@ -27,6 +28,10 @@ abstract final class AppRoutes {
   static String booking(String id) => '/home/bookings/$id';
   static String bookingEdit(String id) => '/home/bookings/$id/edit';
   static String bookingPay(String id) => '/home/bookings/$id/pay';
+
+  /// Full-screen map where the customer pins the service location. Returns a
+  /// `PickedLocation` (and takes the starting `MapPoint` as `extra`).
+  static const String pickLocation = '/home/pick-location';
 
   static const String notifications = '/home/notifications';
 

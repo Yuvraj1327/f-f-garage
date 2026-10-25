@@ -33,6 +33,11 @@ class FakeAuthGateway implements AuthGateway {
   String? lastPassword;
   Map<String, dynamic>? lastMetadata;
   int signOutCalls = 0;
+
+  /// What the next "Continue with Google" does. [googleError] wins when set.
+  GoogleSignInResult googleResult = GoogleSignInResult.signedIn;
+  AuthFailure? googleError;
+  int googleCalls = 0;
   final StreamController<void> _signedOut = StreamController<void>.broadcast();
 
   @override
@@ -67,6 +72,14 @@ class FakeAuthGateway implements AuthGateway {
     lastEmail = email;
     lastPassword = password;
     hasStoredSession = true;
+  }
+
+  @override
+  Future<GoogleSignInResult> signInWithGoogle() async {
+    googleCalls += 1;
+    if (googleError != null) throw googleError!;
+    hasStoredSession = googleResult == GoogleSignInResult.signedIn;
+    return googleResult;
   }
 
   @override

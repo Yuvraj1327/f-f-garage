@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from app.core.config import Settings
+from app.core.config import MAPS_KEY_PLACEHOLDER, Settings
 from tests.conftest import CONFIGURED_SUPABASE, make_settings
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -93,4 +93,7 @@ def test_env_example_contains_no_real_secrets() -> None:
     for line in example.splitlines():
         key, _, value = line.partition("=")
         if key.strip().endswith(("_KEY", "_SECRET")):
-            assert value.strip() == "", f"{key} must be blank in .env.example"
+            # The one allowed non-blank value is the obvious placeholder, which the
+            # settings treat as "not configured" (see Settings.maps_enabled).
+            allowed = ("", MAPS_KEY_PLACEHOLDER) if key.strip() == "GOOGLE_MAPS_API_KEY" else ("",)
+            assert value.strip() in allowed, f"{key} must be blank in .env.example"

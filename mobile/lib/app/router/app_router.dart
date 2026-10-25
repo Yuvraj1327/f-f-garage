@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/models/place.dart';
 import '../../features/admin/areas/admin_areas_screen.dart';
 import '../../features/admin/availability/admin_availability_screen.dart';
 import '../../features/admin/bookings/admin_booking_detail_screen.dart';
@@ -32,11 +33,14 @@ import '../../features/catalog/presentation/service_detail_screen.dart';
 import '../../features/driver/presentation/driver_job_screen.dart';
 import '../../features/home/presentation/customer_home_screen.dart';
 import '../../features/home/presentation/driver_home_screen.dart';
+import '../../features/maps/location_picker_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/payment/presentation/payment_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/support/presentation/support_screen.dart';
 import 'app_routes.dart';
+import '../../features/onboarding/presentation/onboarding_screen.dart';
+import '../../features/onboarding/providers/onboarding_providers.dart';
 import 'auth_redirect.dart';
 
 /// Re-runs the router's redirect whenever the auth state changes.
@@ -49,6 +53,7 @@ class _AuthRefresh extends ChangeNotifier {
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = _AuthRefresh();
   ref.listen<AppAuthState>(authControllerProvider, (_, __) => refresh.notify());
+  ref.listen<bool>(onboardingSeenProvider, (_, __) => refresh.notify());
 
   final router = GoRouter(
     initialLocation: AppRoutes.splash,
@@ -59,6 +64,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         status: auth.status,
         role: auth.role,
         location: state.matchedLocation,
+        onboardingSeen: ref.read(onboardingSeenProvider),
       );
     },
     routes: [
@@ -66,6 +72,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.splash,
         name: 'splash',
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.onboarding,
+        name: 'onboarding',
+        builder: (context, state) => const OnboardingScreen(),
       ),
       GoRoute(
         path: AppRoutes.login,
@@ -104,6 +115,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                     ServiceDetailScreen(serviceId: state.pathParameters['id']!),
               ),
             ],
+          ),
+          GoRoute(
+            path: 'pick-location',
+            name: 'pick-location',
+            builder: (context, state) => LocationPickerScreen(
+              initial: state.extra is MapPoint ? state.extra as MapPoint : null,
+            ),
           ),
           GoRoute(
             path: 'book-address',

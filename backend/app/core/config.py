@@ -16,6 +16,10 @@ _DOMAIN_LABEL = r"[a-z0-9]([a-z0-9-]*[a-z0-9])?"
 _DOMAIN_PATTERN = re.compile(rf"{_DOMAIN_LABEL}(\.{_DOMAIN_LABEL})+")
 
 
+# What backend/.env.example ships with; treated as "no key configured".
+MAPS_KEY_PLACEHOLDER = "your_server_side_maps_key"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -94,6 +98,18 @@ class Settings(BaseSettings):
     garage_address: str = ""
     garage_hours: str = ""
 
+    # --- Google Maps (server side) ---------------------------------------------
+    # Key for the Geocoding API, called ONLY by this backend (address lookup, reverse
+    # geocoding, PIN-code extraction). Restrict it in Google Cloud to "Geocoding API"
+    # and to this server's IP address(es). It is NOT what draws maps in the app: the
+    # Flutter app needs its own, separately restricted, Maps SDK keys (see README).
+    # Empty = address lookup is switched off; booking still works by typing.
+    google_maps_api_key: SecretStr = SecretStr("")
+    google_maps_base_url: str = "https://maps.googleapis.com/maps/api"
+    google_maps_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
+    # Lookups one signed-in customer may make per minute (protects the Google quota).
+    maps_requests_per_minute: int = Field(default=30, ge=1, le=600)
+
     # --- Validation --------------------------------------------------------
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -153,6 +169,14 @@ class Settings(BaseSettings):
             raise ValueError("PAYMENT_GATEWAY_KEY_ID must look like rzp_test_... or rzp_live_...")
         return value
 
+    @field_validator("google_maps_base_url")
+    @classmethod
+    def _validate_maps_base_url(cls, value: str) -> str:
+        value = value.strip().rstrip("/")
+        if not value.startswith("https://") and not value.startswith("http://127.0.0.1"):
+            raise ValueError("GOOGLE_MAPS_BASE_URL must be an https:// URL")
+        return value
+
     @field_validator("payment_gateway_base_url")
     @classmethod
     def _validate_payment_base_url(cls, value: str) -> str:
@@ -209,6 +233,12 @@ class Settings(BaseSettings):
         if self.app_env != "development" or not self.cors_allow_local_dev_origins:
             return None
         return r"^http://(localhost|127\.0\.0\.1)(:\d{1,5})?$"
+
+    @property
+    def maps_enabled(self) -> bool:
+        key = self.google_maps_api_key.get_secret_value().strip()
+        # The value copied straight from .env.example counts as "not set up yet".
+        return bool(key) and key != MAPS_KEY_PLACEHOLDER
 
     @property
     def payments_enabled(self) -> bool:

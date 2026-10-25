@@ -9,6 +9,7 @@ import '../repositories/booking_repository.dart';
 import '../repositories/catalog_repository.dart';
 import '../repositories/driver_work_repository.dart';
 import '../repositories/health_repository.dart';
+import '../repositories/maps_repository.dart';
 import '../repositories/notification_repository.dart';
 import '../repositories/payment_repository.dart';
 import '../repositories/profile_repository.dart';
@@ -23,6 +24,8 @@ import '../services/checkout_launcher.dart';
 import '../services/contact_launcher.dart';
 import '../services/driver_work_api_service.dart';
 import '../services/health_api_service.dart';
+import '../services/location_service.dart';
+import '../services/maps_api_service.dart';
 import '../services/notification_api_service.dart';
 import '../services/payment_api_service.dart';
 import '../services/profile_api_service.dart';
@@ -109,6 +112,15 @@ final notificationRepositoryProvider = Provider<NotificationRepository>(
 
 final supportRepositoryProvider = Provider<SupportRepository>(
   (ref) => SupportRepository(SupportApiService(ref.watch(apiClientProvider))),
+);
+
+final mapsRepositoryProvider = Provider<MapsRepository>(
+  (ref) => MapsRepository(MapsApiService(ref.watch(apiClientProvider))),
+);
+
+/// The phone's position (asks for permission). Tests replace this with a fake.
+final locationServiceProvider = Provider<LocationService>(
+  (ref) => const GeolocatorLocationService(),
 );
 
 /// Opens calls, WhatsApp, email and maps. Tests replace this with a fake.

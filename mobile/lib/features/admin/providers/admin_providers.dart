@@ -91,3 +91,43 @@ void refreshAdminDrivers(WidgetRef ref) {
   ref.invalidate(adminDriversProvider);
   ref.invalidate(adminDriverProvider);
 }
+
+/// Booking and driver figures for the admin dashboard, counted by the server
+/// (the list endpoint's `total`), so no booking data is downloaded for them.
+class AdminStats {
+  const AdminStats({
+    required this.total,
+    required this.completed,
+    required this.pending,
+    required this.cancelled,
+    required this.activeDrivers,
+  });
+
+  final int total;
+  final int completed;
+
+  /// Waiting for payment or for a driver.
+  final int pending;
+  final int cancelled;
+  final int activeDrivers;
+}
+
+final adminStatsProvider = FutureProvider.autoDispose<AdminStats>((ref) async {
+  ref.watch(adminBookingsRefreshProvider);
+  final bookings = ref.watch(adminBookingRepositoryProvider);
+  Future<int> count([List<BookingStatus>? statuses]) async =>
+      (await bookings.list(statuses: statuses, limit: 1)).total;
+  final total = await count();
+  final completed = await count([BookingStatus.completed]);
+  final pending =
+      await count([BookingStatus.pendingPayment, BookingStatus.confirmed]);
+  final cancelled = await count([BookingStatus.cancelled]);
+  final drivers = await ref.watch(adminDriverRepositoryProvider).list();
+  return AdminStats(
+    total: total,
+    completed: completed,
+    pending: pending,
+    cancelled: cancelled,
+    activeDrivers: drivers.where((d) => d.isActive).length,
+  );
+});

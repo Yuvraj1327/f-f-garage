@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show TargetPlatform;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// App configuration, read from the `.env` file (see `.env.example`) through
@@ -16,6 +17,12 @@ class AppConfig {
     required this.supabaseUrl,
     required this.supabaseAnonKey,
     this.driverEmailDomain = defaultDriverEmailDomain,
+    this.googleClientIdWeb = '',
+    this.googleClientIdAndroid = '',
+    this.googleClientIdIos = '',
+    this.mapsKeyWeb = '',
+    this.mapsKeyAndroid = '',
+    this.mapsKeyIos = '',
     this.forbiddenKeys = const [],
   });
 
@@ -33,6 +40,12 @@ class AppConfig {
       supabaseUrl: read('SUPABASE_URL'),
       supabaseAnonKey: read('SUPABASE_ANON_KEY'),
       driverEmailDomain: read('DRIVER_EMAIL_DOMAIN', defaultDriverEmailDomain),
+      googleClientIdWeb: _publicValue(read('GOOGLE_CLIENT_ID_WEB')),
+      googleClientIdAndroid: _publicValue(read('GOOGLE_CLIENT_ID_ANDROID')),
+      googleClientIdIos: _publicValue(read('GOOGLE_CLIENT_ID_IOS')),
+      mapsKeyWeb: _publicValue(read('GOOGLE_MAPS_KEY_WEB')),
+      mapsKeyAndroid: _publicValue(read('GOOGLE_MAPS_KEY_ANDROID')),
+      mapsKeyIos: _publicValue(read('GOOGLE_MAPS_KEY_IOS')),
       forbiddenKeys: forbiddenKeyNames(env.keys),
     );
   }
@@ -78,8 +91,67 @@ class AppConfig {
   /// Email domain used for driver ID logins.
   final String driverEmailDomain;
 
+  /// Google OAuth client IDs (PUBLIC identifiers, not secrets; the client
+  /// *secret* lives only in the Supabase dashboard). See the README.
+  ///
+  /// The Web client ID is what Supabase verifies Google ID tokens against, so
+  /// the Android and iOS apps pass it to Google as `serverClientId`. The iOS
+  /// client ID is also passed as `clientId` on iOS. The Android client ID is
+  /// registered in Google Cloud against the app's package name and SHA-1; the
+  /// Android sign-in SDK finds it by itself, so the app only uses this value to
+  /// tell whether Android was set up.
+  final String googleClientIdWeb;
+  final String googleClientIdAndroid;
+  final String googleClientIdIos;
+
+  /// Maps SDK keys, one per platform, each restricted in Google Cloud to that
+  /// platform (HTTP referrer, Android package + SHA-1, iOS bundle ID). They are
+  /// public by nature (anyone can read them from the app) which is why the
+  /// restriction matters. The server-side Geocoding key is a different key and
+  /// lives only in `backend/.env`.
+  final String mapsKeyWeb;
+  final String mapsKeyAndroid;
+  final String mapsKeyIos;
+
   /// Variable names found in `.env` that look like server secrets.
   final List<String> forbiddenKeys;
+
+  /// Can Google sign-in work in a build for this platform? Web goes through a
+  /// Supabase redirect (configured in the Supabase dashboard, nothing needed in
+  /// the app); Android needs the Web client ID plus the Android client; iOS
+  /// needs the Web client ID plus the iOS client.
+  bool googleSignInConfigured({
+    required bool isWeb,
+    required TargetPlatform platform,
+  }) {
+    if (isWeb) {
+      return isSupabaseConfigured;
+    }
+    switch (platform) {
+      case TargetPlatform.android:
+        return googleClientIdWeb.isNotEmpty && googleClientIdAndroid.isNotEmpty;
+      case TargetPlatform.iOS:
+        return googleClientIdWeb.isNotEmpty && googleClientIdIos.isNotEmpty;
+      default:
+        return false;
+    }
+  }
+
+  /// Is there a Maps key for this platform? Without one the app shows
+  /// "open in Google Maps" links instead of embedded maps.
+  bool mapsConfigured({required bool isWeb, required TargetPlatform platform}) {
+    if (isWeb) {
+      return mapsKeyWeb.isNotEmpty;
+    }
+    switch (platform) {
+      case TargetPlatform.android:
+        return mapsKeyAndroid.isNotEmpty;
+      case TargetPlatform.iOS:
+        return mapsKeyIos.isNotEmpty;
+      default:
+        return false;
+    }
+  }
 
   bool get isSupabaseConfigured =>
       supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
@@ -87,6 +159,13 @@ class AppConfig {
   /// True while a value is still the example placeholder from `.env.example`.
   static bool _isPlaceholder(String value) =>
       value.toUpperCase().contains('YOUR-');
+
+  /// A Google client ID or Maps key as typed in `.env`, or '' while it is still
+  /// the placeholder from `.env.example` (so "not set up yet" is one state).
+  static String _publicValue(String value) =>
+      _isPlaceholder(value) || value.toUpperCase().startsWith('YOUR_')
+          ? ''
+          : value;
 
   /// Everything that stops the app from starting, in plain words (never the
   /// secret values themselves). Empty when the configuration is usable.

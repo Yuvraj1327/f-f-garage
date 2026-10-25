@@ -66,4 +66,10 @@ class FakeContactLauncher implements ContactLauncher {
     opened.add('map:$address');
     return canOpen;
   }
+
+  @override
+  Future<bool> directions(String destination) async {
+    opened.add('directions:$destination');
+    return canOpen;
+  }
 }

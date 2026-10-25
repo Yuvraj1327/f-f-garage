@@ -139,21 +139,31 @@ class _DayChip extends StatelessWidget {
     final date = day.date;
     final key = '${date.year}-${date.month.toString().padLeft(2, '0')}-'
         '${date.day.toString().padLeft(2, '0')}';
+    final scheme = Theme.of(context).colorScheme;
+    final textColor = selected ? scheme.onPrimary : scheme.onSurface;
     return ChoiceChip(
       key: ValueKey('day-$key'),
       selected: selected,
+      selectedColor: scheme.primary,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: day.isOpen ? (_) => onTap() : null,
       label: SizedBox(
         width: 52,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(weekdayShortNames[date.weekday - 1]),
+            Text(
+              weekdayShortNames[date.weekday - 1],
+              style: TextStyle(color: textColor),
+            ),
             Text(
               '${date.day}',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(color: textColor),
             ),
-            Text(_months[date.month - 1]),
+            Text(_months[date.month - 1], style: TextStyle(color: textColor)),
           ],
         ),
       ),
@@ -178,6 +188,15 @@ class _SlotTile extends StatelessWidget {
     final label = '${slot.start.format()} - ${slot.end.format()}';
     return Card(
       key: ValueKey('slot-${slot.slotId}'),
+      shape: selected
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.primary,
+                width: 2,
+              ),
+            )
+          : null,
       child: ListTile(
         enabled: available,
         selected: selected,

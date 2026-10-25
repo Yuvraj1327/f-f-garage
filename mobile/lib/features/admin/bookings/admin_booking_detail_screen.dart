@@ -7,9 +7,11 @@ import '../../../core/widgets/dialogs.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/driver.dart';
 import '../../../data/models/enums.dart';
+import '../../../data/models/place.dart';
 import '../../../data/providers/data_providers.dart';
 import '../../auth/presentation/widgets/auth_widgets.dart';
 import '../../booking/presentation/booking_widgets.dart';
+import '../../maps/location_map_card.dart';
 import '../../payment/presentation/payment_widgets.dart';
 import '../providers/admin_providers.dart';
 
@@ -148,6 +150,13 @@ class _Summary extends StatelessWidget {
             '${booking.city} ${booking.pincode}',
           ].join(', '),
         ),
+        if (booking.hasLocation)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: LocationMapCard(
+              point: MapPoint(booking.latitude!, booking.longitude!),
+            ),
+          ),
         SummaryRow(label: 'Total', value: formatMoney(booking.totalAmount)),
         SummaryRow(
           label: 'Payment',

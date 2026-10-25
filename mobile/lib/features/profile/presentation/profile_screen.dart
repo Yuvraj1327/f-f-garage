@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/validators.dart';
+import '../../../core/widgets/customer_nav.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/user_profile.dart';
@@ -23,6 +24,7 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
+      bottomNavigationBar: customerNavFor(ref, CustomerTab.profile),
       body: SafeArea(
         child: profile == null
             ? const Center(child: CircularProgressIndicator())
@@ -49,6 +51,13 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.error,
+                        width: 1.5,
+                      ),
+                    ),
                     onPressed: () => _confirmSignOut(context, ref),
                     icon: const Icon(Icons.logout),
                     label: const Text('Sign out'),

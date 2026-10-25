@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/widgets/brand_logo.dart';
+
 /// Page frame shared by the signed-out screens: scrollable (so the keyboard
 /// never hides the form), centred and width-limited on large screens.
 class AuthScaffold extends StatelessWidget {
@@ -20,7 +22,8 @@ class AuthScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return Scaffold(
-      appBar: showBack ? AppBar() : null,
+      backgroundColor: Colors.white,
+      appBar: showBack ? AppBar(backgroundColor: Colors.white) : null,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -31,9 +34,21 @@ class AuthScaffold extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(title, style: textTheme.headlineMedium),
+                  const Center(child: BrandLogo(size: 140)),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    style: textTheme.headlineMedium,
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 4),
-                  Text(subtitle, style: textTheme.bodyMedium),
+                  Text(
+                    subtitle,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 24),
                   ...children,
                 ],

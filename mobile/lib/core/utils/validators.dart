@@ -198,6 +198,22 @@ abstract final class Validators {
 
   static String normalizePincode(String value) => value.replaceAll(' ', '');
 
+  // 6 digits, first digit 1-9, optionally written "560 001"; not part of a
+  // longer number (a phone number or a flat number must not match).
+  // (No lookbehind: older Safari versions on Flutter Web do not support it.)
+  static final RegExp _pincodeInText =
+      RegExp(r'(?:^|[^0-9])([1-9][0-9]{2} ?[0-9]{3})(?![0-9])');
+
+  /// The PIN code written inside an address ("... Bhopal 462001"), or null.
+  /// When several are present the last one wins: a PIN code ends an address.
+  static String? extractPincode(String text) {
+    final matches = _pincodeInText.allMatches(text);
+    if (matches.isEmpty) {
+      return null;
+    }
+    return normalizePincode(matches.last.group(1)!);
+  }
+
   /// Whole minutes since midnight must run forward.
   static String? slotOrder(int startMinutes, int endMinutes) =>
       endMinutes > startMinutes ? null : 'The slot must end after it starts';

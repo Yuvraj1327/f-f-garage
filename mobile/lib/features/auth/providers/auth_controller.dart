@@ -8,6 +8,7 @@ import '../../../core/providers/core_providers.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/user_profile.dart';
 import '../../../data/providers/data_providers.dart';
+import '../../../data/services/auth_gateway.dart' show GoogleSignInResult;
 
 enum AuthStatus {
   /// Checking for a stored session at start-up.
@@ -111,6 +112,18 @@ class AuthController extends Notifier<AppAuthState> {
         .read(authRepositoryProvider)
         .signInAdmin(email: email, password: password);
     state = AppAuthState.authenticated(profile);
+  }
+
+  /// "Continue with Google". Returns how it ended; a user who closed Google's
+  /// chooser gets [GoogleSignInResult.cancelled] and nothing changes. Throws
+  /// [AuthFailure].
+  Future<GoogleSignInResult> signInWithGoogle() async {
+    final outcome = await ref.read(authRepositoryProvider).signInWithGoogle();
+    final profile = outcome.profile;
+    if (profile != null) {
+      state = AppAuthState.authenticated(profile);
+    }
+    return outcome.result;
   }
 
   /// Returns true when the user is signed in, false when they must confirm

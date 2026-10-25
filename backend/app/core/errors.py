@@ -55,6 +55,13 @@ class ConflictError(AppError):
     default_detail = "Conflict"
 
 
+class TooManyRequestsError(AppError):
+    """The caller is sending requests faster than allowed."""
+
+    status_code = 429
+    default_detail = "Too many requests. Please wait a moment and try again."
+
+
 class UnprocessableError(AppError):
     """The request is well-formed but breaks a business or database rule."""
 

@@ -41,17 +41,25 @@ AuthFailure mapAuthError({
       text.contains('rate limit')) {
     return AuthFailure.rateLimited;
   }
-  if (errorCode == 'email_address_invalid' ||
-      errorCode == 'validation_failed' ||
-      text.contains('invalid format') ||
-      (text.contains('email address') && text.contains('invalid'))) {
-    return AuthFailure.invalidEmail;
-  }
-  if (errorCode == 'signup_disabled' || text.contains('signups not allowed')) {
-    return AuthFailure.signupDisabled;
-  }
   if (errorCode == 'user_banned' || text.contains('banned')) {
     return AuthFailure.accountDisabled;
+  }
+  // Google sign-in: the provider is switched off in Supabase, or Supabase
+  // rejected the Google token (wrong client ID, expired, nonce mismatch).
+  if (errorCode == 'provider_disabled' ||
+      errorCode == 'validation_failed' ||
+      text.contains('provider is not enabled') ||
+      text.contains('unsupported provider')) {
+    return AuthFailure.googleNotConfigured;
+  }
+  if (errorCode == 'bad_jwt' ||
+      errorCode == 'bad_oauth_callback' ||
+      errorCode == 'bad_oauth_state' ||
+      errorCode == 'oauth_provider_not_supported' ||
+      errorCode == 'identity_already_exists' ||
+      text.contains('id token') ||
+      text.contains('nonce')) {
+    return AuthFailure.googleFailed;
   }
   return AuthFailure.unknown;
 }

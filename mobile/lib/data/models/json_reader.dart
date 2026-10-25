@@ -33,6 +33,18 @@ abstract final class JsonReader {
     return json[key] == null ? null : integer(json, key);
   }
 
+  /// A plain JSON number (coordinates), or null when absent / null.
+  static double? optionalDouble(Map<String, dynamic> json, String key) {
+    final value = json[key];
+    if (value == null) {
+      return null;
+    }
+    if (value is num) {
+      return value.toDouble();
+    }
+    throw FormatException('Expected "$key" to be a number or null, got $value');
+  }
+
   static bool boolean(Map<String, dynamic> json, String key) {
     final value = json[key];
     if (value is bool) {

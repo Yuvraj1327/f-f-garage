@@ -5,7 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/async_view.dart';
+import '../../../core/widgets/customer_nav.dart';
 import '../../../core/widgets/dialogs.dart';
+import '../../../core/widgets/filter_pill.dart';
+import '../../../core/widgets/service_icon.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/providers/data_providers.dart';
@@ -100,6 +103,7 @@ class _BookingHistoryScreenState extends ConsumerState<BookingHistoryScreen> {
     ref.listen<int>(bookingsRefreshProvider, (_, __) => _reload());
     return Scaffold(
       appBar: AppBar(title: const Text('My bookings')),
+      bottomNavigationBar: customerNavFor(ref, CustomerTab.bookings),
       body: SafeArea(
         child: Column(
           children: [
@@ -112,10 +116,10 @@ class _BookingHistoryScreenState extends ConsumerState<BookingHistoryScreen> {
                   for (final filter in BookingFilter.values)
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(filter.label),
+                      child: FilterPill(
+                        label: filter.label,
                         selected: _filter == filter,
-                        onSelected: (_) {
+                        onSelected: () {
                           if (_filter == filter) return;
                           setState(() => _filter = filter);
                           _reload();
@@ -187,41 +191,76 @@ class _BookingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: ListTile(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         key: ValueKey('booking-${booking.id}'),
-        title: Text(
-          '${booking.code} - ${booking.serviceName}',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(booking.packageName),
-            Text('${formatDate(booking.date)}, ${booking.timeLabel}'),
-            Text(
-              bookingProgressLine(booking),
-              key: ValueKey('progress-line-${booking.id}'),
-            ),
-            if (booking.payment != null)
-              Text(
-                paymentSummaryLine(booking.payment!),
-                key: ValueKey('payment-line-${booking.id}'),
-              ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                BookingStatusChip(status: booking.status),
-                const Spacer(),
-                Text(formatMoney(booking.totalAmount)),
-              ],
-            ),
-          ],
-        ),
-        isThreeLine: true,
-        trailing: const Icon(Icons.chevron_right),
         onTap: () => context.push(AppRoutes.booking(booking.id)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ServiceThumb(
+                    category: booking.serviceName,
+                    size: 48,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${booking.code} - ${booking.serviceName}',
+                          style: textTheme.titleMedium,
+                        ),
+                        Text(booking.packageName, style: textTheme.bodySmall),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  BookingStatusChip(status: booking.status),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.event_outlined,
+                      size: 16, color: scheme.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${formatDate(booking.date)}, ${booking.timeLabel}',
+                      style: textTheme.bodyMedium,
+                    ),
+                  ),
+                  Text(
+                    formatMoney(booking.totalAmount),
+                    style: textTheme.titleMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                bookingProgressLine(booking),
+                key: ValueKey('progress-line-${booking.id}'),
+                style: textTheme.bodySmall,
+              ),
+              if (booking.payment != null)
+                Text(
+                  paymentSummaryLine(booking.payment!),
+                  key: ValueKey('payment-line-${booking.id}'),
+                  style: textTheme.bodySmall,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

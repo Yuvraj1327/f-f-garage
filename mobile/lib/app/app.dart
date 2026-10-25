@@ -15,8 +15,8 @@ class FfGarageApp extends ConsumerWidget {
       title: 'F&F Garage',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
+      // Light is the only look of the app (the reference design has no dark mode).
+      themeMode: ThemeMode.light,
       routerConfig: router,
       builder: (context, child) =>
           ResponsiveShell(child: child ?? const SizedBox.shrink()),

@@ -1,12 +1,27 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/network/auth_failure.dart';
 import 'auth_error_mapper.dart';
+import 'google_identity.dart';
 
 enum SignUpResult { signedIn, emailConfirmationRequired }
+
+/// How a "Continue with Google" attempt ended (failures throw [AuthFailure]).
+enum GoogleSignInResult {
+  /// A Supabase session now exists (Android / iOS).
+  signedIn,
+
+  /// The user closed Google's account chooser. Not an error.
+  cancelled,
+
+  /// Flutter Web: the browser is being sent to Google and will come back to
+  /// this app with a session, which start-up restores like any other.
+  redirecting,
+}
 
 /// The app's only contact point with Supabase Auth. Everything else in the app
 /// talks to this interface, which keeps SDK types out of the rest of the code
@@ -34,6 +49,11 @@ abstract interface class AuthGateway {
     required String password,
   });
 
+  /// Signs in (or up: Supabase creates the account on first use) with Google.
+  /// Android / iOS show Google's account chooser and hand the ID token to
+  /// Supabase; Web redirects the browser through Supabase's OAuth flow.
+  Future<GoogleSignInResult> signInWithGoogle();
+
   /// A fresh access token; null if the session is over. Throws on transient
   /// failures such as no network.
   Future<String?> refreshAccessToken();
@@ -43,9 +63,24 @@ abstract interface class AuthGateway {
 }
 
 class SupabaseAuthGateway implements AuthGateway {
-  SupabaseAuthGateway(this._auth);
+  /// [google] is the phone's Google account chooser; null when this build has no
+  /// Google client IDs (or on Web, which redirects instead).
+  /// [webRedirectUrl] is where Google sends the browser back to on Web.
+  SupabaseAuthGateway(
+    this._auth, {
+    GoogleIdentityProvider? google,
+    bool? isWeb,
+    String Function()? webRedirectUrl,
+  })  : _google = google,
+        _isWeb = isWeb ?? kIsWeb,
+        _webRedirectUrl = webRedirectUrl ?? _currentOrigin;
 
   final GoTrueClient _auth;
+  final GoogleIdentityProvider? _google;
+  final bool _isWeb;
+  final String Function() _webRedirectUrl;
+
+  static String _currentOrigin() => Uri.base.origin;
 
   @override
   String? get accessToken => _auth.currentSession?.accessToken;
@@ -103,6 +138,43 @@ class SupabaseAuthGateway implements AuthGateway {
   }
 
   @override
+  Future<GoogleSignInResult> signInWithGoogle() async {
+    try {
+      if (_isWeb) {
+        // Full-page redirect to Google and back. The provider must be enabled
+        // in Supabase and the redirect URL allow-listed (see the README).
+        await _auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: _webRedirectUrl(),
+        );
+        return GoogleSignInResult.redirecting;
+      }
+      final google = _google;
+      if (google == null) {
+        throw AuthFailure.googleNotConfigured;
+      }
+      final credential = await google.authenticate();
+      if (credential == null) {
+        return GoogleSignInResult.cancelled;
+      }
+      await _auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: credential.idToken,
+        accessToken: credential.accessToken,
+      );
+      return GoogleSignInResult.signedIn;
+    } on AuthRetryableFetchException {
+      throw AuthFailure.network;
+    } on AuthException catch (error) {
+      throw _mapGoogle(error);
+    } on SocketException {
+      throw AuthFailure.network;
+    } on TimeoutException {
+      throw AuthFailure.network;
+    }
+  }
+
+  @override
   Future<String?> refreshAccessToken() async {
     try {
       final response = await _auth.refreshSession();
@@ -116,6 +188,8 @@ class SupabaseAuthGateway implements AuthGateway {
 
   @override
   Future<void> signOut() async {
+    // Forget the Google account too, so the next sign-in offers the chooser.
+    await _google?.signOut();
     try {
       await _auth.signOut();
     } on AuthException {
@@ -131,6 +205,15 @@ class SupabaseAuthGateway implements AuthGateway {
         statusCode: error.statusCode,
         code: error.code,
       );
+
+  /// A Supabase error during Google sign-in. Anything the mapper does not
+  /// recognise is reported as a Google problem, not "wrong password".
+  AuthFailure _mapGoogle(AuthException error) {
+    final failure = _map(error);
+    return failure.type == AuthFailureType.unknown
+        ? AuthFailure.googleFailed
+        : failure;
+  }
 }
 
 /// Used when the build has no Supabase configuration: the app starts, shows the
@@ -159,6 +242,10 @@ class UnconfiguredAuthGateway implements AuthGateway {
     required String email,
     required String password,
   }) async => throw AuthFailure.notConfigured;
+
+  @override
+  Future<GoogleSignInResult> signInWithGoogle() async =>
+      throw AuthFailure.notConfigured;
 
   @override
   Future<String?> refreshAccessToken() async => null;
