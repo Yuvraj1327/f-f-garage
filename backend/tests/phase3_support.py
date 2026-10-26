@@ -20,6 +20,7 @@ from app.api.deps import (
     get_profile_repository,
     get_service_area_repository,
     get_tracking_repository,
+    get_vehicle_repository,
 )
 from app.domain.enums import UserRole
 from app.main import create_app
@@ -37,6 +38,7 @@ from tests.fakes_catalog import (
 from tests.fakes_garage import FakeGarageSettings
 from tests.fakes_payment import FakeGateway, FakePaymentRepository
 from tests.fakes_tracking import FakeTracking
+from tests.fakes_vehicles import FakeVehicles
 from tests.jwt_helpers import HS256_SECRET, make_token
 
 SETTINGS = make_settings(**CONFIGURED_SUPABASE, supabase_jwt_secret=HS256_SECRET)
@@ -68,12 +70,14 @@ class Ctx:
         self.gateway = FakeGateway()
         self.assignments = FakeAssignmentRepository(self.bookings, self.profiles, self.payments)
         self.garage = FakeGarageSettings()
+        self.vehicles = FakeVehicles()
         self.tracking = FakeTracking(self.bookings, self.assignments, self.payments, self.profiles)
 
         app = create_app(self.settings)
         app.dependency_overrides[get_profile_repository] = lambda: self.profiles
         app.dependency_overrides[get_catalog_repository] = lambda: self.catalog
         app.dependency_overrides[get_garage_settings_repository] = lambda: self.garage
+        app.dependency_overrides[get_vehicle_repository] = lambda: self.vehicles
         app.dependency_overrides[get_service_area_repository] = lambda: self.areas
         app.dependency_overrides[get_availability_repository] = lambda: self.availability
         app.dependency_overrides[get_availability_service] = lambda: AvailabilityService(
@@ -99,6 +103,7 @@ class Ctx:
             assignments=self.assignments,
             profiles=self.profiles,
             tracking=self.tracking,
+            vehicles=self.vehicles,
         )
         self.client = TestClient(app)
         self.as_admin = headers_for(self.admin)

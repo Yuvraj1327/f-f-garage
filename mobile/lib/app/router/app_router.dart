@@ -44,6 +44,8 @@ import '../../features/settings/presentation/garage_settings_screen.dart';
 import '../../features/settings/presentation/privacy_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/support/presentation/support_screen.dart';
+import '../../features/vehicles/presentation/vehicle_form_screen.dart';
+import '../../features/vehicles/presentation/vehicles_screen.dart';
 import 'app_routes.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/onboarding/providers/onboarding_providers.dart';
@@ -115,7 +117,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'services',
             name: 'browse-services',
-            builder: (context, state) => const BrowseServicesScreen(),
+            builder: (context, state) => BrowseServicesScreen(
+              initialQuery: state.uri.queryParameters['q'] ?? '',
+            ),
             routes: [
               GoRoute(
                 path: ':id',
@@ -146,6 +150,26 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'book-summary',
             name: 'book-summary',
             builder: (context, state) => const BookingSummaryScreen(),
+          ),
+          GoRoute(
+            path: 'vehicles',
+            name: 'vehicles',
+            builder: (context, state) => const VehiclesScreen(),
+            routes: [
+              // "new" is declared before ":id" so it is not read as an id.
+              GoRoute(
+                path: 'new',
+                name: 'vehicle-new',
+                builder: (context, state) => const VehicleFormScreen(),
+              ),
+              GoRoute(
+                path: ':id/edit',
+                name: 'vehicle-edit',
+                builder: (context, state) => VehicleFormScreen(
+                  vehicleId: state.pathParameters['id']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: 'notifications',

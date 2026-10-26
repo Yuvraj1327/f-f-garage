@@ -27,6 +27,7 @@ from app.db.payment_repository import PaymentRepository
 from app.db.profile_repository import ProfileRepository
 from app.db.service_area_repository import ServiceAreaRepository
 from app.db.tracking_repository import TrackingRepository
+from app.db.vehicle_repository import VehicleRepository
 from app.domain import booking as rules
 from app.domain.enums import BookingStatus, PaymentStatus, VehicleType
 from app.schemas.assignment import AdminAssignment, AssignmentRecord, DriverSummary
@@ -89,7 +90,9 @@ class BookingService:
         assignments: AssignmentRepository | None = None,
         profiles: ProfileRepository | None = None,
         tracking: TrackingRepository | None = None,
+        vehicles: VehicleRepository | None = None,
     ) -> None:
+        self._vehicles = vehicles
         self._tracking = tracking
         self._payments = payments
         self._assignments = assignments
@@ -183,6 +186,18 @@ class BookingService:
             )
 
         priced = self._price(payload)
+        vehicle = None
+        if payload.vehicle_id is not None:
+            vehicle = (
+                self._vehicles.get(customer.id, payload.vehicle_id) if self._vehicles else None
+            )
+            if vehicle is None:
+                raise NotFoundError("Vehicle not found")
+            if vehicle.vehicle_type != priced.service.vehicle_type:
+                raise UnprocessableError(
+                    f"This is a {priced.service.vehicle_type.value} service; "
+                    f"choose one of your {priced.service.vehicle_type.value}s"
+                )
         area = self._serviceable_area(payload.pincode)
         slot = self._availability.ensure_bookable(payload.scheduled_date, payload.time_slot_id)
 
@@ -215,6 +230,10 @@ class BookingService:
             "estimated_duration_minutes": priced.package.estimated_duration_minutes,
             "package_price": str(priced.package_price),
             "customer_notes": payload.customer_notes,
+            "vehicle_registration": vehicle.registration_number if vehicle else None,
+            "vehicle_make": vehicle.make if vehicle else None,
+            "vehicle_model": vehicle.model if vehicle else None,
+            "vehicle_nickname": vehicle.nickname if vehicle else None,
             "client_request_id": (
                 str(payload.client_request_id) if payload.client_request_id else None
             ),

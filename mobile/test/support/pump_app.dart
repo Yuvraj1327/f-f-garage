@@ -20,6 +20,7 @@ import 'fakes_maps.dart';
 import 'fakes_notification.dart';
 import 'fakes_payment.dart';
 import 'fakes_support.dart';
+import 'fakes_vehicles.dart';
 
 class AppHarness {
   AppHarness({
@@ -39,10 +40,12 @@ class AppHarness {
     FakeMapsRepository? maps,
     FakeLocationService? location,
     FakeGarageSettingsRepository? garage,
+    FakeVehicleRepository? vehicles,
     MemoryPreferences? preferences,
     this.mapsEnabled = false,
     Duration? pollInterval,
   })  : garage = garage ?? FakeGarageSettingsRepository(),
+        vehicles = vehicles ?? FakeVehicleRepository(),
         preferences = preferences ?? MemoryPreferences(),
         maps = maps ?? FakeMapsRepository(),
         location = location ?? FakeLocationService(),
@@ -77,6 +80,7 @@ class AppHarness {
   final FakeMapsRepository maps;
   final FakeLocationService location;
   final FakeGarageSettingsRepository garage;
+  final FakeVehicleRepository vehicles;
 
   /// The device's saved settings. Pass the same object to a second harness to
   /// mimic restarting the app.
@@ -125,6 +129,7 @@ class AppHarness {
           notificationRepositoryProvider.overrideWithValue(notifications),
           supportRepositoryProvider.overrideWithValue(support),
           garageSettingsRepositoryProvider.overrideWithValue(garage),
+          vehicleRepositoryProvider.overrideWithValue(vehicles),
           preferencesStoreProvider.overrideWithValue(preferences),
           contactLauncherProvider.overrideWithValue(contactLauncher),
           trackingPollIntervalProvider.overrideWithValue(pollInterval),

@@ -93,6 +93,10 @@ class Booking {
     this.longitude,
     this.state,
     this.notes,
+    this.vehicleRegistration,
+    this.vehicleMake,
+    this.vehicleModel,
+    this.vehicleNickname,
     this.cancellationReason,
     this.cancelBlockedReason,
   });
@@ -133,6 +137,11 @@ class Booking {
           BookingCharge.fromJson,
         ),
         notes: JsonReader.optionalString(json, 'customer_notes'),
+        vehicleRegistration:
+            JsonReader.optionalString(json, 'vehicle_registration'),
+        vehicleMake: JsonReader.optionalString(json, 'vehicle_make'),
+        vehicleModel: JsonReader.optionalString(json, 'vehicle_model'),
+        vehicleNickname: JsonReader.optionalString(json, 'vehicle_nickname'),
         cancellationReason:
             JsonReader.optionalString(json, 'cancellation_reason'),
         createdAt: DateTime.parse(JsonReader.string(json, 'created_at')),
@@ -204,6 +213,24 @@ class Booking {
   final double totalAmount;
   final List<BookingCharge> charges;
   final String? notes;
+
+  /// The vehicle copied onto the booking (none for bookings made without one).
+  final String? vehicleRegistration;
+  final String? vehicleMake;
+  final String? vehicleModel;
+  final String? vehicleNickname;
+
+  /// "TVS Jupiter - MH12AB1234", or null when no vehicle was chosen.
+  String? get vehicleLine {
+    final registration = vehicleRegistration;
+    if (registration == null) return null;
+    final name = [vehicleMake, vehicleModel]
+        .whereType<String>()
+        .where((part) => part.isNotEmpty)
+        .join(' ');
+    return name.isEmpty ? registration : '$name - $registration';
+  }
+
   final String? cancellationReason;
   final DateTime createdAt;
   final DateTime? confirmedAt;
@@ -388,9 +415,13 @@ class NewBooking {
     this.latitude,
     this.longitude,
     this.notes,
+    this.vehicleId,
   });
 
   final String packageId;
+
+  /// One of the customer's saved vehicles (optional).
+  final String? vehicleId;
   final List<String> extraChargeIds;
   final String pincode;
   final String addressLine;

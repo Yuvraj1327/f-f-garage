@@ -17,6 +17,7 @@ from app.api.v1.endpoints import (
     payments,
     profiles,
     support,
+    vehicles,
 )
 
 api_router = APIRouter()
@@ -38,3 +39,4 @@ api_router.include_router(assignments.driver_router)
 api_router.include_router(notifications.router)
 api_router.include_router(support.router)
 api_router.include_router(maps.router)
+api_router.include_router(vehicles.router)

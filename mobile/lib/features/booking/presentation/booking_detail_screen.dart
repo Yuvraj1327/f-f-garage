@@ -329,6 +329,16 @@ class _Body extends StatelessWidget {
                 _DriverPhone(phone: booking.driver!.phone!),
             ],
           ),
+        if (booking.vehicleLine != null)
+          SectionCard(
+            title: 'Vehicle',
+            children: [
+              if (booking.vehicleNickname != null)
+                Text(booking.vehicleNickname!,
+                    style: Theme.of(context).textTheme.titleMedium),
+              Text(booking.vehicleLine!),
+            ],
+          ),
         SectionCard(
           title: 'Service',
           children: [

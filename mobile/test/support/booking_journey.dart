@@ -9,6 +9,7 @@ import 'fakes_catalog.dart';
 import 'fakes_maps.dart';
 import 'fakes_notification.dart';
 import 'fakes_payment.dart';
+import 'fakes_vehicles.dart';
 import 'pump_app.dart';
 
 DateTime today() {
@@ -101,6 +102,7 @@ AppHarness customerHarness({
   Duration? pollInterval,
   FakeMapsRepository? maps,
   FakeLocationService? location,
+  FakeVehicleRepository? vehicles,
   bool mapsEnabled = false,
 }) {
   final availability = FakeAvailabilityRepository()
@@ -116,6 +118,7 @@ AppHarness customerHarness({
     pollInterval: pollInterval,
     maps: maps,
     location: location,
+    vehicles: vehicles,
     mapsEnabled: mapsEnabled,
   );
 }

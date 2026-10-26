@@ -48,6 +48,11 @@ abstract final class AppRoutes {
 
   static const String notifications = '/home/notifications';
 
+  // Saved vehicles (customers)
+  static const String vehicles = '/home/vehicles';
+  static const String vehicleNew = '/home/vehicles/new';
+  static String vehicleEdit(String id) => '/home/vehicles/$id/edit';
+
   // Driver area: everything under /driver
   static const String driverHome = '/driver';
   static const String driverHistory = '/driver/history';

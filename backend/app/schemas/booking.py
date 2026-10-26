@@ -69,6 +69,8 @@ class BookingCreate(_Location, QuoteRequest):
     scheduled_date: date
     time_slot_id: UUID
     customer_notes: Notes = None
+    # One of the customer's saved vehicles (optional); its details are copied onto the booking.
+    vehicle_id: UUID | None = None
     # Lets the app retry safely: the same key never creates a second booking.
     client_request_id: UUID | None = None
     # The total the customer was shown; a mismatch is refused (409), never trusted.
@@ -181,6 +183,10 @@ class BookingRecord(BaseModel):
     package_price: Amount
     extra_charges_total: Amount
     total_amount: Amount
+    vehicle_registration: str | None = None
+    vehicle_make: str | None = None
+    vehicle_model: str | None = None
+    vehicle_nickname: str | None = None
     customer_notes: str | None = None
     cancellation_reason: str | None = None
     cancelled_by: UUID | None = None
@@ -230,6 +236,10 @@ class BookingOut(BaseModel):
     extra_charges_total: Amount
     total_amount: Amount
     extra_charges: list[BookingChargeOut]
+    vehicle_registration: str | None = None
+    vehicle_make: str | None = None
+    vehicle_model: str | None = None
+    vehicle_nickname: str | None = None
     customer_notes: str | None = None
     cancellation_reason: str | None = None
     confirmed_at: datetime | None = None

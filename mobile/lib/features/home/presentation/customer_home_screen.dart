@@ -12,6 +12,8 @@ import '../../../core/widgets/service_icon.dart';
 import '../../../data/models/catalog.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../catalog/presentation/pincode_check_card.dart';
+import '../../vehicles/providers/vehicle_providers.dart';
+import 'home_location_card.dart';
 import '../../catalog/providers/catalog_providers.dart';
 import '../../notifications/presentation/notification_bell.dart';
 
@@ -66,7 +68,13 @@ class CustomerHomeScreen extends ConsumerWidget {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              const HomeLocationCard(),
+              const SizedBox(height: 8),
+              const _SearchBar(),
+              const SizedBox(height: 8),
+              const _VehicleCard(),
+              const SizedBox(height: 8),
               const _HeroBanner(),
               const SizedBox(height: 8),
               const Row(
@@ -329,6 +337,91 @@ class _QuickAction extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Search services": opens the service list with what was typed.
+class _SearchBar extends StatelessWidget {
+  const _SearchBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      key: const ValueKey('home-search'),
+      textInputAction: TextInputAction.search,
+      onSubmitted: (text) {
+        final query = text.trim();
+        context.push(
+          query.isEmpty
+              ? AppRoutes.browseServices
+              : Uri(
+                  path: AppRoutes.browseServices,
+                  queryParameters: {'q': query},
+                ).toString(),
+        );
+      },
+      decoration: const InputDecoration(
+        hintText: 'Search services, e.g. brake, oil change',
+        prefixIcon: Icon(Icons.search),
+      ),
+    );
+  }
+}
+
+/// "Add Your Vehicle", or the vehicle that will be serviced with a way to
+/// change it.
+class _VehicleCard extends ConsumerWidget {
+  const _VehicleCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vehicle = ref.watch(selectedVehicleProvider);
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Card(
+      key: const ValueKey('home-vehicle'),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context
+            .push(vehicle == null ? AppRoutes.vehicleNew : AppRoutes.vehicles),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: scheme.primaryContainer,
+                foregroundColor: scheme.primary,
+                child: const Icon(Icons.two_wheeler),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      vehicle == null ? 'Add Your Vehicle' : vehicle.title,
+                      style: textTheme.titleMedium,
+                    ),
+                    Text(
+                      vehicle == null
+                          ? 'Save your bike or scooter to book faster'
+                          : '${vehicle.make} ${vehicle.model} - '
+                              '${vehicle.registrationPretty}',
+                      style: textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                vehicle == null ? 'Add' : 'Change',
+                style: textTheme.labelLarge?.copyWith(color: scheme.primary),
+              ),
+              Icon(Icons.chevron_right, color: scheme.primary),
             ],
           ),
         ),

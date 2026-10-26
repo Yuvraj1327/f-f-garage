@@ -28,6 +28,7 @@ from app.db.tracking_repository import (
     SupabaseTrackingRepository,
     TrackingRepository,
 )
+from app.db.vehicle_repository import SupabaseVehicleRepository, VehicleRepository
 from app.services.assignment_service import AssignmentService
 from app.services.availability_service import AvailabilityService
 from app.services.booking_service import BookingService
@@ -43,6 +44,7 @@ from app.services.payment_gateway import PaymentGateway, RazorpayGateway
 from app.services.payment_service import PaymentService
 from app.services.profile_service import ProfileService
 from app.services.service_area_service import ServiceAreaService
+from app.services.vehicle_service import VehicleService
 
 
 def get_app_settings(request: Request) -> Settings:
@@ -214,6 +216,20 @@ def get_notification_service(notifications: NotificationRepositoryDep) -> Notifi
 NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]
 
 
+def get_vehicle_repository(settings: SettingsDep) -> VehicleRepository:
+    return SupabaseVehicleRepository(get_supabase_admin_client(settings))
+
+
+VehicleRepositoryDep = Annotated[VehicleRepository, Depends(get_vehicle_repository)]
+
+
+def get_vehicle_service(vehicles: VehicleRepositoryDep) -> VehicleService:
+    return VehicleService(vehicles)
+
+
+VehicleServiceDep = Annotated[VehicleService, Depends(get_vehicle_service)]
+
+
 def get_booking_service(
     bookings: BookingRepositoryDep,
     catalog: CatalogRepositoryDep,
@@ -224,6 +240,7 @@ def get_booking_service(
     assignments: AssignmentRepositoryDep,
     profiles: ProfileRepositoryDep,
     tracking: TrackingRepositoryDep,
+    vehicles: VehicleRepositoryDep,
 ) -> BookingService:
     return BookingService(
         bookings,
@@ -235,6 +252,7 @@ def get_booking_service(
         assignments=assignments,
         profiles=profiles,
         tracking=tracking,
+        vehicles=vehicles,
     )
 
 

@@ -31,6 +31,7 @@ CUSTOMER_ONLY_PREFIXES = (
     "/api/v1/payments",
     "/api/v1/notifications",
     "/api/v1/maps",
+    "/api/v1/vehicles",
 )
 
 

@@ -58,6 +58,7 @@ ff-garage/
 | `service_packages` | Priced packages inside a service, with inclusions |
 | `extra_charges` | Spare-part / engine-oil / other charges, per service or per package |
 | `service_areas` | Serviceable PIN codes (one row per PIN) |
+| `customer_vehicles` | A customer's saved two-wheelers (registration, make, model, optional nickname); backend-only access |
 | `garage_settings` | One row: the garage's name and contact details, edited by admins (backend-only access) |
 | `bookings` | Customer bookings with name/address/price/service/package snapshots, schedule and status (see *Booking system*) |
 | `booking_extra_charges` | Extra charges as they were when the booking was made (immutable snapshot rows) |
@@ -506,6 +507,12 @@ The Phase 8 `url_launcher` query entries (above, in "UI polish and support") are
 ## Images
 
 `mobile/assets/images/` (the whole folder is registered in `pubspec.yaml`): `logo.png` (the F&F logo, corners made transparent; used on splash, onboarding, sign-in, About and the home header), `scooter.jpg` and `bike.jpg` (top of the Scooter and Bike service lists and of each service), `home_banner.jpg` (the mechanic banner on Customer Home, with the "Book a service" button) and `onboarding_hero.jpg`. Pictures are shown at their own aspect ratio. The old `logo.jpg` is replaced by `logo.png`.
+
+## Vehicles and the location-first Home
+
+**Saved vehicles** (customers only; migration `20261026110000_customer_vehicles.sql`, `GET/POST /vehicles`, `PATCH/DELETE /vehicles/{id}`). Two-wheelers only (bike or scooter): registration number (normalised to upper case, validated against Indian plate shapes such as `MH12AB1234` and the Bharat series `22BH1234AA`), make, model and an optional nickname. Up to 10 per customer, no duplicate registration, and another customer's vehicle is always "not found". In the app: **Settings > My vehicles**, the **Add Your Vehicle** card on Home, and the **Your vehicle** card on the booking summary. A booking may carry a vehicle (`vehicle_id`, optional): the server checks it is yours and matches the service type, then copies registration, make, model and nickname onto the booking, so history stays correct after the vehicle is edited or removed. Admins see the vehicle on the booking.
+
+**Home location.** On a customer's first visit a card explains why location helps and offers **Allow location** or **Not now**; the system permission is requested only after "Allow location", once. On a grant the app reads the position, asks the backend (`/maps/reverse`) for the address and whether the PIN code is serviceable, and shows a map preview with a pin, the address and a **Change** button (which opens the full map where the pin can be moved). "Not now" or a refusal is remembered and never followed by another prompt; the customer can pick a place on the map, enter a PIN code in the existing check, or tap "Use my location" later. The Home screen also has a search bar (opens the service list with the text), the mechanic banner, service categories and popular services.
 
 ## Navigation, settings and themes
 

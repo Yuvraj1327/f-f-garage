@@ -74,6 +74,10 @@ abstract final class ApiEndpoints {
   // Support: garage contact details (any signed-in role)
   static const String supportContact = '/support/contact';
 
+  // Customer: saved two-wheelers
+  static const String vehicles = '/vehicles';
+  static String vehicle(String id) => '/vehicles/$id';
+
   // Admin: the garage's own details (name, phone, email, ...)
   static const String adminGarageSettings = '/admin/garage-settings';
 }

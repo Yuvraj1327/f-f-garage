@@ -136,6 +136,8 @@ class _Summary extends StatelessWidget {
           ],
         ),
         SummaryRow(label: 'Package', value: booking.packageName),
+        if (booking.vehicleLine != null)
+          SummaryRow(label: 'Vehicle', value: booking.vehicleLine!),
         SummaryRow(
           label: 'When',
           value: '${formatDate(booking.date)}, ${booking.timeLabel}',

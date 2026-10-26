@@ -16,6 +16,7 @@ import '../repositories/payment_repository.dart';
 import '../repositories/profile_repository.dart';
 import '../repositories/service_area_repository.dart';
 import '../repositories/support_repository.dart';
+import '../repositories/vehicle_repository.dart';
 import '../services/admin_booking_api_service.dart';
 import '../services/admin_driver_api_service.dart';
 import '../services/availability_api_service.dart';
@@ -33,6 +34,7 @@ import '../services/payment_api_service.dart';
 import '../services/profile_api_service.dart';
 import '../services/service_area_api_service.dart';
 import '../services/support_api_service.dart';
+import '../services/vehicle_api_service.dart';
 
 /// Wiring for the data layer: ApiClient -> service -> repository.
 /// Each later feature adds its own service and repository providers here.
@@ -120,6 +122,10 @@ final garageSettingsRepositoryProvider = Provider<GarageSettingsRepository>(
   (ref) => GarageSettingsRepository(
     GarageSettingsApiService(ref.watch(apiClientProvider)),
   ),
+);
+
+final vehicleRepositoryProvider = Provider<VehicleRepository>(
+  (ref) => VehicleRepository(VehicleApiService(ref.watch(apiClientProvider))),
 );
 
 final mapsRepositoryProvider = Provider<MapsRepository>(

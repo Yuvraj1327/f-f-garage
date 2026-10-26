@@ -6,7 +6,10 @@ import '../../../app/router/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/async_view.dart';
 import '../../../data/models/booking.dart';
+import '../../../data/models/enums.dart';
+import '../../../data/models/vehicle.dart';
 import '../../../data/providers/data_providers.dart';
+import '../../vehicles/providers/vehicle_providers.dart';
 import '../../auth/presentation/widgets/auth_widgets.dart' show MessageBanner;
 import '../providers/booking_providers.dart';
 import '../../maps/location_map_card.dart';
@@ -45,6 +48,11 @@ class _BookingSummaryScreenState extends ConsumerState<BookingSummaryScreen> {
   Future<void> _confirm(BookingQuote quote) async {
     if (_busy) return;
     final flow = ref.read(bookingFlowProvider);
+    final vehicle = pickVehicle(
+      ref.read(vehiclesProvider).valueOrNull ?? const [],
+      ref.read(selectedVehicleProvider),
+      quote.vehicleType,
+    );
     final address = flow.address;
     final schedule = flow.schedule;
     if (address == null || schedule == null) return;
@@ -56,6 +64,7 @@ class _BookingSummaryScreenState extends ConsumerState<BookingSummaryScreen> {
       final booking = await ref.read(bookingRepositoryProvider).create(
             NewBooking(
               packageId: quote.packageId,
+              vehicleId: vehicle?.id,
               extraChargeIds: flow.extraChargeIds.toList()..sort(),
               pincode: address.pincode,
               addressLine: address.addressLine,
@@ -165,6 +174,7 @@ class _Content extends ConsumerWidget {
                   ],
                 ],
               ),
+              _VehicleSection(type: quote.vehicleType),
               SectionCard(
                 title: 'Visit',
                 children: [
@@ -271,6 +281,50 @@ class _Content extends ConsumerWidget {
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// Which of the customer's saved vehicles this booking is for (optional).
+class _VehicleSection extends ConsumerWidget {
+  const _VehicleSection({required this.type});
+
+  final VehicleType type;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vehicle = pickVehicle(
+      ref.watch(vehiclesProvider).valueOrNull ?? const [],
+      ref.watch(selectedVehicleProvider),
+      type,
+    );
+    final loaded = ref.watch(vehiclesProvider).hasValue;
+    return SectionCard(
+      title: 'Your vehicle',
+      children: [
+        if (vehicle != null) ...[
+          Text(vehicle.title, style: Theme.of(context).textTheme.titleMedium),
+          Text('${vehicle.make} ${vehicle.model} - ${vehicle.registrationPretty}'),
+          TextButton(
+            key: const ValueKey('change-vehicle'),
+            onPressed: () => context.push(AppRoutes.vehicles),
+            child: const Text('Change vehicle'),
+          ),
+        ] else ...[
+          Text(
+            loaded
+                ? 'No saved ${vehicleLabel(type).toLowerCase()} yet. Adding '
+                    'one is optional, but helps the driver.'
+                : 'Checking your saved vehicles...',
+          ),
+          if (loaded)
+            TextButton(
+              key: const ValueKey('add-vehicle-booking'),
+              onPressed: () => context.push(AppRoutes.vehicleNew),
+              child: const Text('Add your vehicle'),
+            ),
+        ],
       ],
     );
   }

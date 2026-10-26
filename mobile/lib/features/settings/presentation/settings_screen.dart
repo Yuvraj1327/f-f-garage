@@ -43,6 +43,14 @@ class SettingsScreen extends ConsumerWidget {
                           : 'Your details',
                       onTap: () => context.push(AppRoutes.profile),
                     ),
+                    if (role == UserRole.customer)
+                      _NavTile(
+                        key: const ValueKey('settings-vehicles'),
+                        icon: Icons.two_wheeler,
+                        title: 'My vehicles',
+                        subtitle: 'Add, edit or remove your bike or scooter',
+                        onTap: () => context.push(AppRoutes.vehicles),
+                      ),
                     _NavTile(
                       key: const ValueKey('settings-password'),
                       icon: Icons.lock_outline,

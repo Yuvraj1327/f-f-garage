@@ -23,6 +23,7 @@ class BookingRepository {
     final notes = draft.notes?.trim();
     final json = await _service.create({
       'package_id': draft.packageId,
+      if (draft.vehicleId != null) 'vehicle_id': draft.vehicleId,
       'extra_charge_ids': draft.extraChargeIds,
       'pincode': draft.pincode,
       'address_line': draft.addressLine,

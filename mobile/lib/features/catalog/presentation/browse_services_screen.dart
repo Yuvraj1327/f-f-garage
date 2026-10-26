@@ -16,7 +16,10 @@ import '../providers/catalog_providers.dart';
 /// "Select Service": the active services, by vehicle type, with a search box
 /// and category chips. All data comes from the catalogue API.
 class BrowseServicesScreen extends StatelessWidget {
-  const BrowseServicesScreen({super.key});
+  const BrowseServicesScreen({super.key, this.initialQuery = ''});
+
+  /// A search typed on Home, applied to both lists.
+  final String initialQuery;
 
   @override
   Widget build(BuildContext context) {
@@ -29,11 +32,11 @@ class BrowseServicesScreen extends StatelessWidget {
             tabs: [Tab(text: 'Scooter'), Tab(text: 'Bike')],
           ),
         ),
-        body: const SafeArea(
+        body: SafeArea(
           child: TabBarView(
             children: [
-              _ServiceList(type: VehicleType.scooter),
-              _ServiceList(type: VehicleType.bike),
+              _ServiceList(type: VehicleType.scooter, query: initialQuery),
+              _ServiceList(type: VehicleType.bike, query: initialQuery),
             ],
           ),
         ),
@@ -43,9 +46,10 @@ class BrowseServicesScreen extends StatelessWidget {
 }
 
 class _ServiceList extends ConsumerStatefulWidget {
-  const _ServiceList({required this.type});
+  const _ServiceList({required this.type, this.query = ''});
 
   final VehicleType type;
+  final String query;
 
   @override
   ConsumerState<_ServiceList> createState() => _ServiceListState();
@@ -53,8 +57,16 @@ class _ServiceList extends ConsumerStatefulWidget {
 
 class _ServiceListState extends ConsumerState<_ServiceList>
     with AutomaticKeepAliveClientMixin {
-  String _query = '';
+  late String _query = widget.query;
+  late final TextEditingController _search =
+      TextEditingController(text: widget.query);
   String? _category;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   bool get wantKeepAlive => true;
@@ -103,6 +115,7 @@ class _ServiceListState extends ConsumerState<_ServiceList>
               VehicleBanner(type: type),
               const SizedBox(height: 12),
               TextField(
+                controller: _search,
                 textInputAction: TextInputAction.search,
                 onChanged: (v) => setState(() => _query = v),
                 decoration: const InputDecoration(
