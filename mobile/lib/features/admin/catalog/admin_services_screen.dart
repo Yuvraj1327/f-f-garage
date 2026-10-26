@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_routes.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_nav.dart';
 import '../../../core/widgets/async_view.dart';
 import '../../../core/widgets/form_widgets.dart';
 import '../../../core/widgets/service_icon.dart';
@@ -30,6 +31,7 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Services')),
+      bottomNavigationBar: navFor(ref, NavTab.services),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(AppRoutes.adminServiceNew),
         icon: const Icon(Icons.add),

@@ -34,6 +34,13 @@ class FakeAuthGateway implements AuthGateway {
   Map<String, dynamic>? lastMetadata;
   int signOutCalls = 0;
 
+  /// Password change: the current password the fake accepts, what it was
+  /// last changed to and whether to fail.
+  String currentPassword = 'OldPass#1234';
+  String? changedTo;
+  String? changeEmail;
+  AuthFailure? changePasswordError;
+
   /// What the next "Continue with Google" does. [googleError] wins when set.
   GoogleSignInResult googleResult = GoogleSignInResult.signedIn;
   AuthFailure? googleError;
@@ -80,6 +87,22 @@ class FakeAuthGateway implements AuthGateway {
     if (googleError != null) throw googleError!;
     hasStoredSession = googleResult == GoogleSignInResult.signedIn;
     return googleResult;
+  }
+
+  @override
+  Future<void> changePassword({
+    required String email,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (changePasswordError != null) throw changePasswordError!;
+    if (currentPassword != this.currentPassword) {
+      throw AuthFailure.wrongCurrentPassword;
+    }
+    if (newPassword == this.currentPassword) throw AuthFailure.samePassword;
+    changeEmail = email;
+    changedTo = newPassword;
+    this.currentPassword = newPassword;
   }
 
   @override

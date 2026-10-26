@@ -3,6 +3,9 @@ enum AuthFailureType {
   emailNotConfirmed,
   emailAlreadyRegistered,
   weakPassword,
+  wrongCurrentPassword,
+  samePassword,
+  noPasswordSet,
   rateLimited,
   network,
   wrongAccountType,
@@ -41,6 +44,18 @@ class AuthFailure implements Exception {
     AuthFailureType.weakPassword,
     'That password is too weak. Use a longer, less common password.',
   );
+  static const AuthFailure wrongCurrentPassword = AuthFailure(
+    AuthFailureType.wrongCurrentPassword,
+    'Your current password is not correct.',
+  );
+  static const AuthFailure samePassword = AuthFailure(
+    AuthFailureType.samePassword,
+    'Choose a new password that is different from the current one.',
+  );
+  static const AuthFailure noPasswordSet = AuthFailure(
+    AuthFailureType.noPasswordSet,
+    'This account has no email address to check your password against.',
+  );
   static const AuthFailure rateLimited = AuthFailure(
     AuthFailureType.rateLimited,
     'Too many attempts. Please wait a few minutes and try again.',
@@ -53,6 +68,15 @@ class AuthFailure implements Exception {
     AuthFailureType.wrongAccountType,
     'This is not a customer account. Drivers and staff should use their own '
     'sign-in.',
+  );
+  static const AuthFailure invalidStaffCredentials = AuthFailure(
+    AuthFailureType.invalidCredentials,
+    'Incorrect driver ID, email or password.',
+  );
+  static const AuthFailure notStaffAccount = AuthFailure(
+    AuthFailureType.wrongAccountType,
+    'This sign-in is for drivers and admins. Customers should use the '
+    'customer login.',
   );
   static const AuthFailure notDriverAccount = AuthFailure(
     AuthFailureType.wrongAccountType,

@@ -24,6 +24,7 @@ void main() {
       for (final route in [
         AppRoutes.login,
         AppRoutes.register,
+        AppRoutes.staffLogin,
         AppRoutes.driverLogin,
       ]) {
         expect(_go(AuthStatus.unauthenticated, null, route), isNull);
@@ -51,6 +52,7 @@ void main() {
         AppRoutes.splash,
         AppRoutes.login,
         AppRoutes.register,
+        AppRoutes.staffLogin,
         AppRoutes.driverLogin,
       ]) {
         expect(
@@ -133,6 +135,10 @@ void main() {
         AppRoutes.driverHome,
       );
       expect(
+        _go(AuthStatus.authenticated, UserRole.driver, AppRoutes.staffLogin),
+        AppRoutes.driverHome,
+      );
+      expect(
         _go(AuthStatus.authenticated, UserRole.driver, AppRoutes.customerHome),
         AppRoutes.driverHome,
       );
@@ -153,6 +159,7 @@ void main() {
       for (final route in [
         AppRoutes.splash,
         AppRoutes.login,
+        AppRoutes.staffLogin,
         AppRoutes.adminLogin,
         AppRoutes.customerHome,
         AppRoutes.driverHome,
@@ -311,6 +318,65 @@ void main() {
     test('a booking link carries the code in the query', () {
       expect(AppRoutes.supportForBooking('FF-000007'),
           '/support?booking=FF-000007');
+    });
+  });
+
+  group('settings', () {
+    test('every signed-in role may open settings and its pages', () {
+      for (final role in UserRole.values) {
+        for (final route in [
+          AppRoutes.settings,
+          AppRoutes.settingsPassword,
+          AppRoutes.settingsAbout,
+          AppRoutes.settingsPrivacy,
+        ]) {
+          expect(_go(AuthStatus.authenticated, role, route), isNull,
+              reason: '$role $route');
+        }
+      }
+    });
+
+    test('only the administrator may open the garage details', () {
+      expect(
+        _go(AuthStatus.authenticated, UserRole.admin, AppRoutes.settingsGarage),
+        isNull,
+      );
+      expect(
+        _go(AuthStatus.authenticated, UserRole.customer,
+            AppRoutes.settingsGarage),
+        AppRoutes.customerHome,
+      );
+      expect(
+        _go(AuthStatus.authenticated, UserRole.driver, AppRoutes.settingsGarage),
+        AppRoutes.driverHome,
+      );
+    });
+
+    test('signed-out users are sent to login', () {
+      expect(
+        _go(AuthStatus.unauthenticated, null, AppRoutes.settings),
+        AppRoutes.login,
+      );
+    });
+
+    test('drivers keep their own pages and are kept off the others', () {
+      expect(
+        _go(AuthStatus.authenticated, UserRole.driver, AppRoutes.driverHistory),
+        isNull,
+      );
+      expect(
+        _go(AuthStatus.authenticated, UserRole.driver, AppRoutes.driverEarnings),
+        isNull,
+      );
+      expect(
+        _go(AuthStatus.authenticated, UserRole.customer,
+            AppRoutes.driverEarnings),
+        AppRoutes.customerHome,
+      );
+      expect(
+        _go(AuthStatus.authenticated, UserRole.driver, AppRoutes.adminDrivers),
+        AppRoutes.driverHome,
+      );
     });
   });
 }

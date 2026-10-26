@@ -16,9 +16,8 @@ import '../../features/admin/drivers/admin_driver_detail_screen.dart';
 import '../../features/admin/drivers/admin_drivers_screen.dart';
 import '../../features/admin/drivers/driver_create_screen.dart';
 import '../../features/admin/presentation/admin_home_screen.dart';
-import '../../features/auth/presentation/admin_login_screen.dart';
 import '../../features/auth/presentation/customer_login_screen.dart';
-import '../../features/auth/presentation/driver_login_screen.dart';
+import '../../features/auth/presentation/staff_login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/providers/auth_controller.dart';
@@ -36,7 +35,14 @@ import '../../features/home/presentation/driver_home_screen.dart';
 import '../../features/maps/location_picker_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/payment/presentation/payment_screen.dart';
+import '../../features/driver/presentation/driver_history_screen.dart';
+import '../../features/driver/presentation/driver_earnings_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/settings/presentation/about_screen.dart';
+import '../../features/settings/presentation/change_password_screen.dart';
+import '../../features/settings/presentation/garage_settings_screen.dart';
+import '../../features/settings/presentation/privacy_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/support/presentation/support_screen.dart';
 import 'app_routes.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
@@ -89,14 +95,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
+        path: AppRoutes.staffLogin,
+        name: 'staff-login',
+        builder: (context, state) => const StaffLoginScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.driverLogin,
-        name: 'driver-login',
-        builder: (context, state) => const DriverLoginScreen(),
+        redirect: (context, state) => AppRoutes.staffLogin,
       ),
       GoRoute(
         path: AppRoutes.adminLogin,
-        name: 'admin-login',
-        builder: (context, state) => const AdminLoginScreen(),
+        redirect: (context, state) => AppRoutes.staffLogin,
       ),
       GoRoute(
         path: AppRoutes.customerHome,
@@ -279,6 +288,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const DriverHomeScreen(),
         routes: [
           GoRoute(
+            path: 'history',
+            name: 'driver-history',
+            builder: (context, state) => const DriverHistoryScreen(),
+          ),
+          GoRoute(
+            path: 'earnings',
+            name: 'driver-earnings',
+            builder: (context, state) => const DriverEarningsScreen(),
+          ),
+          GoRoute(
             path: 'bookings/:id',
             name: 'driver-booking',
             builder: (context, state) => DriverJobScreen(
@@ -291,6 +310,33 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.profile,
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.settings,
+        name: 'settings',
+        builder: (context, state) => const SettingsScreen(),
+        routes: [
+          GoRoute(
+            path: 'password',
+            name: 'settings-password',
+            builder: (context, state) => const ChangePasswordScreen(),
+          ),
+          GoRoute(
+            path: 'about',
+            name: 'settings-about',
+            builder: (context, state) => const AboutScreen(),
+          ),
+          GoRoute(
+            path: 'privacy',
+            name: 'settings-privacy',
+            builder: (context, state) => const PrivacyScreen(),
+          ),
+          GoRoute(
+            path: 'garage',
+            name: 'settings-garage',
+            builder: (context, state) => const GarageSettingsScreen(),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.support,

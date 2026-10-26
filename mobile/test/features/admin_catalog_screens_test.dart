@@ -20,7 +20,7 @@ void main() {
   testWidgets('admin home offers services, areas and availability',
       (tester) async {
     await AppHarness(role: UserRole.admin).pump(tester);
-    expect(find.text('Services'), findsOneWidget);
+    expect(find.textContaining('Services, packages'), findsOneWidget);
     expect(find.text('Service areas'), findsOneWidget);
     expect(find.text('Availability'), findsOneWidget);
   });

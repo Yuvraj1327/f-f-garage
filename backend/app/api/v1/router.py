@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     admin_availability,
     admin_catalog,
     admin_drivers,
+    admin_garage,
     admin_service_areas,
     assignments,
     bookings,
@@ -22,6 +23,7 @@ api_router = APIRouter()
 api_router.include_router(health.router)
 api_router.include_router(profiles.router)
 api_router.include_router(admin_drivers.router)
+api_router.include_router(admin_garage.router)
 api_router.include_router(catalog.router)
 api_router.include_router(admin_catalog.router)
 api_router.include_router(admin_service_areas.router)

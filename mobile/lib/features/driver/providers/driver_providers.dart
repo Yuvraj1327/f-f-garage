@@ -26,6 +26,8 @@ class DriverSummary {
     required this.today,
     required this.completedToday,
     required this.open,
+    required this.completedThisMonth,
+    required this.finishedTotal,
   });
 
   /// Jobs scheduled for today (open or finished).
@@ -34,6 +36,12 @@ class DriverSummary {
 
   /// Jobs still to do, whatever the day.
   final int open;
+
+  /// Completed bookings dated this calendar month.
+  final int completedThisMonth;
+
+  /// Every finished booking (completed or cancelled) the driver has had.
+  final int finishedTotal;
 }
 
 final driverSummaryProvider = FutureProvider.autoDispose<DriverSummary>((ref) async {
@@ -51,5 +59,12 @@ final driverSummaryProvider = FutureProvider.autoDispose<DriverSummary>((ref) as
         .where((j) => j.status == BookingStatus.completed && isToday(j.date))
         .length,
     open: open.total,
+    completedThisMonth: history.items
+        .where((j) =>
+            j.status == BookingStatus.completed &&
+            j.date.year == now.year &&
+            j.date.month == now.month)
+        .length,
+    finishedTotal: history.total,
   );
 });

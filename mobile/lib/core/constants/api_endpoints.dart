@@ -73,4 +73,7 @@ abstract final class ApiEndpoints {
 
   // Support: garage contact details (any signed-in role)
   static const String supportContact = '/support/contact';
+
+  // Admin: the garage's own details (name, phone, email, ...)
+  static const String adminGarageSettings = '/admin/garage-settings';
 }

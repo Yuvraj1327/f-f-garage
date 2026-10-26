@@ -22,8 +22,7 @@ class AuthScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: showBack ? AppBar(backgroundColor: Colors.white) : null,
+      appBar: showBack ? AppBar() : null,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

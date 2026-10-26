@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.auth import CurrentUserDep
-from app.api.deps import SettingsDep
+from app.api.deps import GarageSettingsServiceDep
 from app.schemas.support import SupportContactOut
 
 router = APIRouter(prefix="/support", tags=["Support"])
@@ -25,14 +25,15 @@ def _digits_plus(raw: str) -> str:
         403: {"description": "Account disabled"},
     },
 )
-def read_contact(user: CurrentUserDep, settings: SettingsDep) -> SupportContactOut:
-    """Configured by the operator through environment variables. Fields that are not
-    configured come back as empty strings."""
+def read_contact(user: CurrentUserDep, garage: GarageSettingsServiceDep) -> SupportContactOut:
+    """The details an admin saved in the app, or (until they do) the ones configured
+    through environment variables. Fields that are not set come back as empty strings."""
+    current = garage.current()
     return SupportContactOut(
-        name=settings.garage_name.strip(),
-        phone=_digits_plus(settings.garage_phone),
-        whatsapp=_digits_plus(settings.garage_whatsapp),
-        email=settings.garage_email.strip(),
-        address=settings.garage_address.strip(),
-        hours=settings.garage_hours.strip(),
+        name=current.name,
+        phone=_digits_plus(current.phone),
+        whatsapp=_digits_plus(current.whatsapp),
+        email=current.email,
+        address=current.address,
+        hours=current.hours,
     )

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/async_view.dart';
-import '../../../core/widgets/customer_nav.dart';
+import '../../../core/widgets/app_nav.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../core/widgets/filter_pill.dart';
 import '../../../core/widgets/service_icon.dart';
@@ -103,7 +103,7 @@ class _BookingHistoryScreenState extends ConsumerState<BookingHistoryScreen> {
     ref.listen<int>(bookingsRefreshProvider, (_, __) => _reload());
     return Scaffold(
       appBar: AppBar(title: const Text('My bookings')),
-      bottomNavigationBar: customerNavFor(ref, CustomerTab.bookings),
+      bottomNavigationBar: navFor(ref, NavTab.bookings),
       body: SafeArea(
         child: Column(
           children: [

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_routes.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_nav.dart';
 import '../../../core/widgets/async_view.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../core/widgets/filter_pill.dart';
@@ -125,6 +126,7 @@ class _AdminBookingsScreenState extends ConsumerState<AdminBookingsScreen> {
     ref.listen<int>(adminBookingsRefreshProvider, (_, __) => _reload());
     return Scaffold(
       appBar: AppBar(title: const Text('Bookings')),
+      bottomNavigationBar: navFor(ref, NavTab.adminBookings),
       body: SafeArea(
         child: Column(
           children: [

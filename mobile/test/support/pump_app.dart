@@ -1,6 +1,7 @@
 import 'package:ff_garage/app/app.dart';
 import 'package:ff_garage/app/router/app_router.dart';
 import 'package:ff_garage/core/config/app_config.dart';
+import 'package:ff_garage/core/preferences/app_preferences.dart';
 import 'package:ff_garage/core/providers/core_providers.dart';
 import 'package:ff_garage/data/models/enums.dart';
 import 'package:ff_garage/data/providers/data_providers.dart';
@@ -14,6 +15,7 @@ import 'fakes.dart';
 import 'fakes_booking.dart';
 import 'fakes_catalog.dart';
 import 'fakes_driver.dart';
+import 'fakes_garage.dart';
 import 'fakes_maps.dart';
 import 'fakes_notification.dart';
 import 'fakes_payment.dart';
@@ -36,9 +38,13 @@ class AppHarness {
     FakeContactLauncher? contactLauncher,
     FakeMapsRepository? maps,
     FakeLocationService? location,
+    FakeGarageSettingsRepository? garage,
+    MemoryPreferences? preferences,
     this.mapsEnabled = false,
     Duration? pollInterval,
-  })  : maps = maps ?? FakeMapsRepository(),
+  })  : garage = garage ?? FakeGarageSettingsRepository(),
+        preferences = preferences ?? MemoryPreferences(),
+        maps = maps ?? FakeMapsRepository(),
         location = location ?? FakeLocationService(),
         support = support ?? FakeSupportRepository(),
         contactLauncher = contactLauncher ?? FakeContactLauncher(),
@@ -70,6 +76,11 @@ class AppHarness {
   final FakeContactLauncher contactLauncher;
   final FakeMapsRepository maps;
   final FakeLocationService location;
+  final FakeGarageSettingsRepository garage;
+
+  /// The device's saved settings. Pass the same object to a second harness to
+  /// mimic restarting the app.
+  final MemoryPreferences preferences;
 
   /// True gives the app a Maps key for the test platform, so map screens show
   /// a [FakeMapView] instead of the "maps are off" fallbacks.
@@ -113,6 +124,8 @@ class AppHarness {
           driverWorkRepositoryProvider.overrideWithValue(driverWork),
           notificationRepositoryProvider.overrideWithValue(notifications),
           supportRepositoryProvider.overrideWithValue(support),
+          garageSettingsRepositoryProvider.overrideWithValue(garage),
+          preferencesStoreProvider.overrideWithValue(preferences),
           contactLauncherProvider.overrideWithValue(contactLauncher),
           trackingPollIntervalProvider.overrideWithValue(pollInterval),
         ],

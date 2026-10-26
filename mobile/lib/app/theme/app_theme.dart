@@ -25,10 +25,34 @@ abstract final class AppTheme {
       brightness: brightness,
     );
     if (brightness == Brightness.dark) {
+      // Black page, dark-grey cards, white text, royal-blue buttons.
       return base.copyWith(
-        primary: const Color(0xFF60A5FA),
+        primary: AppColors.primary,
+        onPrimary: Colors.white,
+        primaryContainer: const Color(0xFF1E3A8A),
+        onPrimaryContainer: const Color(0xFFDBEAFE),
         secondary: const Color(0xFF34D399),
+        onSecondary: const Color(0xFF052E1B),
+        secondaryContainer: const Color(0xFF064E3B),
+        onSecondaryContainer: const Color(0xFFD1FAE5),
         tertiary: const Color(0xFFFBBF24),
+        onTertiary: const Color(0xFF3B2A00),
+        tertiaryContainer: const Color(0xFF4A3300),
+        onTertiaryContainer: const Color(0xFFFEF3C7),
+        error: const Color(0xFFF87171),
+        onError: const Color(0xFF3B0A0A),
+        errorContainer: const Color(0xFF5B1A1A),
+        onErrorContainer: const Color(0xFFFEE2E2),
+        surface: const Color(0xFF0A0A0B),
+        onSurface: const Color(0xFFF8FAFC),
+        onSurfaceVariant: const Color(0xFFA8B3C4),
+        surfaceContainerLowest: const Color(0xFF000000),
+        surfaceContainerLow: const Color(0xFF1C1F24),
+        surfaceContainer: const Color(0xFF1C1F24),
+        surfaceContainerHigh: const Color(0xFF262A31),
+        surfaceContainerHighest: const Color(0xFF2E333B),
+        outline: const Color(0xFF475569),
+        outlineVariant: const Color(0xFF2E333B),
       );
     }
     return base.copyWith(
@@ -103,6 +127,8 @@ abstract final class AppTheme {
       fontFamily: fontFamily,
     );
     final text = _text(base.textTheme, scheme);
+    // Blue text and outlines: royal blue on light, a lighter blue on black.
+    final link = isLight ? scheme.primary : const Color(0xFF60A5FA);
 
     OutlineInputBorder border(Color color, [double width = 1]) =>
         OutlineInputBorder(
@@ -134,8 +160,8 @@ abstract final class AppTheme {
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(minTouch, 52),
           shape: shape,
-          foregroundColor: scheme.primary,
-          side: BorderSide(color: scheme.primary, width: 1.5),
+          foregroundColor: link,
+          side: BorderSide(color: link, width: 1.5),
           textStyle: text.titleSmall?.copyWith(fontSize: 16),
         ),
       ),
@@ -143,6 +169,7 @@ abstract final class AppTheme {
         style: TextButton.styleFrom(
           minimumSize: const Size(minTouch, minTouch),
           shape: shape,
+          foregroundColor: link,
           textStyle: text.titleSmall,
         ),
       ),
@@ -168,7 +195,7 @@ abstract final class AppTheme {
       chipTheme: ChipThemeData(
         shape: const StadiumBorder(),
         side: BorderSide(color: scheme.outlineVariant),
-        backgroundColor: isLight ? AppColors.surface : null,
+        backgroundColor: isLight ? AppColors.surface : scheme.surfaceContainerHigh,
         selectedColor: scheme.primary,
         labelStyle: text.labelLarge,
         secondaryLabelStyle:
@@ -177,7 +204,7 @@ abstract final class AppTheme {
         showCheckmark: false,
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: isLight ? AppColors.surface : null,
+        backgroundColor: isLight ? AppColors.surface : scheme.surfaceContainerLow,
         surfaceTintColor: Colors.transparent,
         indicatorColor: scheme.primaryContainer,
         height: 68,

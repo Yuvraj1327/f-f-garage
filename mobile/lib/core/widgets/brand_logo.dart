@@ -4,13 +4,15 @@ import '../../app/theme/app_colors.dart';
 
 /// Where the brand images live (registered in pubspec.yaml).
 abstract final class BrandAssets {
-  static const String logo = 'assets/images/logo.jpg';
+  static const String logo = 'assets/images/logo.png';
+  static const String scooter = 'assets/images/scooter.jpg';
+  static const String bike = 'assets/images/bike.jpg';
+  static const String homeBanner = 'assets/images/home_banner.jpg';
   static const String onboardingHero = 'assets/images/onboarding_hero.jpg';
 }
 
 /// The F&F Two Wheeler Garage logo, shown whole (never stretched or cropped) in
-/// a [size] x [size] box. The picture has a white background, so put it on a
-/// white surface. If the image cannot be loaded a simple blue badge is drawn
+/// a [size] x [size] box. It has transparent corners, so it suits any background. If the image cannot be loaded a simple blue badge is drawn
 /// instead, so a missing asset never breaks a screen.
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.size = 96});
@@ -19,12 +21,14 @@ class BrandLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The logo is a blue rounded square with transparent corners, so it looks
+    // right on both the light and the dark theme.
     return Image.asset(
       BrandAssets.logo,
       width: size,
       height: size,
       fit: BoxFit.contain,
-      semanticLabel: 'F&F Two Wheeler Garage',
+      semanticLabel: 'F&F Bike Mechanic in Minutes',
       errorBuilder: (context, error, stack) => _Fallback(size: size),
     );
   }

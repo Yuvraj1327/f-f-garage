@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_routes.dart';
+import '../../../core/widgets/app_nav.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/stat_tile.dart';
 import '../../auth/providers/auth_controller.dart';
@@ -26,14 +27,8 @@ class AdminHomeScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('F&F Garage - Admin'),
-        actions: [
-          IconButton(
-            tooltip: 'Profile',
-            icon: const Icon(Icons.account_circle_outlined),
-            onPressed: () => context.push(AppRoutes.profile),
-          ),
-        ],
       ),
+      bottomNavigationBar: navFor(ref, NavTab.dashboard),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(adminStatsProvider.future),
@@ -110,6 +105,12 @@ class AdminHomeScreen extends ConsumerWidget {
                 title: 'Availability',
                 subtitle: 'Time slots, closed days and capacity',
                 onTap: () => context.push(AppRoutes.adminAvailability),
+              ),
+              _Tile(
+                icon: Icons.storefront_outlined,
+                title: 'Garage details',
+                subtitle: 'Name, phone, email and opening hours',
+                onTap: () => context.push(AppRoutes.settingsGarage),
               ),
             ],
           ),

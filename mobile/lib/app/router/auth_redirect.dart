@@ -6,6 +6,7 @@ const Set<String> _publicRoutes = {
   AppRoutes.onboarding,
   AppRoutes.login,
   AppRoutes.register,
+  AppRoutes.staffLogin,
   AppRoutes.driverLogin,
   AppRoutes.adminLogin,
 };
@@ -18,7 +19,8 @@ const Set<String> _publicRoutes = {
 /// - Signed-out users can reach only the onboarding, login and register
 ///   screens; until the onboarding has been seen, login redirects to it.
 /// - Signed-in users are kept off the login screens, and each role is kept
-///   inside its own area (a path prefix). The profile and support screens are shared.
+///   inside its own area (a path prefix). Profile, support and settings are
+///   shared (the garage-details page inside settings is admin-only).
 ///
 /// This is convenience, not security: every backend endpoint enforces the role
 /// itself (see `app/api/auth.py`).
@@ -43,12 +45,22 @@ String? authRedirect({
       if (home == null) {
         return location == AppRoutes.splash ? null : AppRoutes.splash;
       }
-      if (location == AppRoutes.profile || location == AppRoutes.support) {
+      if (location == AppRoutes.settingsGarage) {
+        // Garage details are the administrator's; the backend enforces it too.
+        return role == UserRole.admin ? null : home;
+      }
+      if (_isShared(location)) {
         return null;
       }
       return _isInside(location, home) ? null : home;
   }
 }
+
+/// Screens every signed-in role may open: profile, support and settings.
+bool _isShared(String location) =>
+    location == AppRoutes.profile ||
+    location == AppRoutes.support ||
+    _isInside(location, AppRoutes.settings);
 
 /// The landing screen for a role.
 String? homeFor(UserRole? role) {

@@ -54,6 +54,15 @@ abstract interface class AuthGateway {
   /// Supabase; Web redirects the browser through Supabase's OAuth flow.
   Future<GoogleSignInResult> signInWithGoogle();
 
+  /// Changes the signed-in user's password. The current password is checked
+  /// first (by signing in with it again), so a stolen unlocked phone cannot
+  /// silently take over the account. Throws [AuthFailure].
+  Future<void> changePassword({
+    required String email,
+    required String currentPassword,
+    required String newPassword,
+  });
+
   /// A fresh access token; null if the session is over. Throws on transient
   /// failures such as no network.
   Future<String?> refreshAccessToken();
@@ -175,6 +184,39 @@ class SupabaseAuthGateway implements AuthGateway {
   }
 
   @override
+  Future<void> changePassword({
+    required String email,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      try {
+        await _auth.signInWithPassword(email: email, password: currentPassword);
+      } on AuthRetryableFetchException {
+        rethrow;
+      } on AuthException catch (error) {
+        final failure = _map(error);
+        throw failure.type == AuthFailureType.invalidCredentials
+            ? AuthFailure.wrongCurrentPassword
+            : failure;
+      }
+      await _auth.updateUser(UserAttributes(password: newPassword));
+    } on AuthRetryableFetchException {
+      throw AuthFailure.network;
+    } on AuthException catch (error) {
+      if ((error.code ?? '') == 'same_password' ||
+          error.message.toLowerCase().contains('different from the old')) {
+        throw AuthFailure.samePassword;
+      }
+      throw _map(error);
+    } on SocketException {
+      throw AuthFailure.network;
+    } on TimeoutException {
+      throw AuthFailure.network;
+    }
+  }
+
+  @override
   Future<String?> refreshAccessToken() async {
     try {
       final response = await _auth.refreshSession();
@@ -246,6 +288,13 @@ class UnconfiguredAuthGateway implements AuthGateway {
   @override
   Future<GoogleSignInResult> signInWithGoogle() async =>
       throw AuthFailure.notConfigured;
+
+  @override
+  Future<void> changePassword({
+    required String email,
+    required String currentPassword,
+    required String newPassword,
+  }) async => throw AuthFailure.notConfigured;
 
   @override
   Future<String?> refreshAccessToken() async => null;

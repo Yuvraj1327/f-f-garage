@@ -5,11 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/validators.dart';
-import '../../../core/widgets/customer_nav.dart';
-import '../../../core/widgets/dialogs.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/user_profile.dart';
 import '../../../data/providers/data_providers.dart';
+import '../../auth/presentation/sign_out.dart';
 import '../../auth/presentation/widgets/auth_widgets.dart';
 import '../../auth/providers/auth_controller.dart';
 
@@ -24,7 +23,6 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
-      bottomNavigationBar: customerNavFor(ref, CustomerTab.profile),
       body: SafeArea(
         child: profile == null
             ? const Center(child: CircularProgressIndicator())
@@ -58,7 +56,7 @@ class ProfileScreen extends ConsumerWidget {
                         width: 1.5,
                       ),
                     ),
-                    onPressed: () => _confirmSignOut(context, ref),
+                    onPressed: () => confirmSignOut(context, ref),
                     icon: const Icon(Icons.logout),
                     label: const Text('Sign out'),
                   ),
@@ -67,18 +65,6 @@ class ProfileScreen extends ConsumerWidget {
               ),
       ),
     );
-  }
-
-  Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
-    final confirmed = await confirmAction(
-      context,
-      title: 'Sign out?',
-      message: 'You will need to sign in again to use the app.',
-      confirmLabel: 'Sign out',
-    );
-    if (confirmed) {
-      await ref.read(authControllerProvider.notifier).signOut();
-    }
   }
 }
 

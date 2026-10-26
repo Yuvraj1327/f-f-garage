@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/async_view.dart';
+import '../../../core/widgets/vehicle_banner.dart';
 import '../../../data/models/catalog.dart';
 import '../../booking/providers/booking_providers.dart';
 import '../providers/catalog_providers.dart';
@@ -28,6 +29,8 @@ class ServiceDetailScreen extends ConsumerWidget {
           builder: (service) => ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              VehicleBanner(type: service.vehicleType),
+              const SizedBox(height: 12),
               Text(
                 '${vehicleLabel(service.vehicleType)} - ${service.category}',
                 style: Theme.of(context).textTheme.labelLarge,

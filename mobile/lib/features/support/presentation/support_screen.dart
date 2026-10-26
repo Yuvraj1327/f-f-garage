@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/async_view.dart';
-import '../../../core/widgets/customer_nav.dart';
+import '../../../core/widgets/app_nav.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../data/models/support_contact.dart';
@@ -24,7 +24,7 @@ class SupportScreen extends ConsumerWidget {
     final contact = ref.watch(supportContactProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Help & support')),
-      bottomNavigationBar: customerNavFor(ref, CustomerTab.support),
+      bottomNavigationBar: navFor(ref, NavTab.support),
       body: SafeArea(
         child: AsyncView<SupportContact>(
           value: contact,

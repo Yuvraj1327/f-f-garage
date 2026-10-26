@@ -92,6 +92,18 @@ class AuthController extends Notifier<AppAuthState> {
     state = AppAuthState.authenticated(profile);
   }
 
+  /// Driver or admin sign-in; the profile's role decides the destination (the
+  /// router moves on). Throws [AuthFailure].
+  Future<void> signInStaff({
+    required String identifier,
+    required String password,
+  }) async {
+    final profile = await ref
+        .read(authRepositoryProvider)
+        .signInStaff(identifier: identifier, password: password);
+    state = AppAuthState.authenticated(profile);
+  }
+
   /// Throws [AuthFailure].
   Future<void> signInDriver({
     required String driverId,
@@ -145,6 +157,22 @@ class AuthController extends Notifier<AppAuthState> {
     }
     state = AppAuthState.authenticated(profile);
     return true;
+  }
+
+  /// Changes the signed-in user's password. Throws [AuthFailure].
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final profile = state.profile;
+    if (profile == null) {
+      throw AuthFailure.sessionExpired;
+    }
+    await ref.read(authRepositoryProvider).changePassword(
+          profile: profile,
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        );
   }
 
   Future<void> signOut() async {

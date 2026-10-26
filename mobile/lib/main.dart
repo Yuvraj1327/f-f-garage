@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app/app.dart';
 import 'app/config_error_screen.dart';
 import 'core/config/app_config.dart';
+import 'core/preferences/app_preferences.dart';
 import 'core/providers/core_providers.dart';
 import 'features/onboarding/providers/onboarding_providers.dart';
 
@@ -48,9 +49,12 @@ Future<void> main() async {
   final onboardingSeen = await PrefsOnboardingStore.load();
   final onboardingStore = await PrefsOnboardingStore.open();
 
+  final preferences = await SharedPrefsPreferences.open();
+
   runApp(
     ProviderScope(
       overrides: [
+        if (preferences != null) preferencesStoreProvider.overrideWithValue(preferences),
         appConfigProvider.overrideWithValue(config),
         initialOnboardingSeenProvider.overrideWithValue(onboardingSeen),
         onboardingStoreProvider.overrideWithValue(onboardingStore),

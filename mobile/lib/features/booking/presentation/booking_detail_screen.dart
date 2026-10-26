@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_routes.dart';
+import '../../../core/preferences/app_preferences.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/async_view.dart';
 import '../../../core/widgets/dialogs.dart';
@@ -62,6 +63,8 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
   /// confirmed, driver assigned, a step taken, cancelled) and reloads the screen
   /// only if it did. A failed check is ignored; the next one tries again.
   Future<void> _checkForUpdates() async {
+    // "Keep updates live" in Settings can switch the automatic check off.
+    if (!ref.read(notificationPrefsProvider).autoRefresh) return;
     final shown = ref.read(bookingProvider(widget.bookingId)).valueOrNull;
     if (shown == null ||
         shown.status == BookingStatus.completed ||

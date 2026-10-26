@@ -14,6 +14,10 @@ from app.db.availability_repository import (
 )
 from app.db.booking_repository import BookingRepository, SupabaseBookingRepository
 from app.db.catalog_repository import CatalogRepository, SupabaseCatalogRepository
+from app.db.garage_settings_repository import (
+    GarageSettingsRepository,
+    SupabaseGarageSettingsRepository,
+)
 from app.db.payment_repository import PaymentRepository, SupabasePaymentRepository
 from app.db.profile_repository import ProfileRepository, SupabaseProfileRepository
 from app.db.service_area_repository import ServiceAreaRepository, SupabaseServiceAreaRepository
@@ -30,6 +34,7 @@ from app.services.booking_service import BookingService
 from app.services.catalog_service import CatalogService
 from app.services.driver_admin_service import DriverAdminService
 from app.services.driver_work_service import DriverWorkService
+from app.services.garage_settings_service import GarageSettingsService
 from app.services.geocoding_gateway import GeocodingGateway, GoogleGeocodingGateway
 from app.services.health_service import HealthService
 from app.services.maps_service import MapsService, RateLimiter
@@ -114,6 +119,24 @@ def get_service_area_repository(settings: SettingsDep) -> ServiceAreaRepository:
 
 
 ServiceAreaRepositoryDep = Annotated[ServiceAreaRepository, Depends(get_service_area_repository)]
+
+
+def get_garage_settings_repository(settings: SettingsDep) -> GarageSettingsRepository:
+    return SupabaseGarageSettingsRepository(get_supabase_admin_client(settings))
+
+
+GarageSettingsRepositoryDep = Annotated[
+    GarageSettingsRepository, Depends(get_garage_settings_repository)
+]
+
+
+def get_garage_settings_service(
+    repository: GarageSettingsRepositoryDep, settings: SettingsDep
+) -> GarageSettingsService:
+    return GarageSettingsService(repository, settings)
+
+
+GarageSettingsServiceDep = Annotated[GarageSettingsService, Depends(get_garage_settings_service)]
 
 
 def get_availability_repository(settings: SettingsDep) -> AvailabilityRepository:

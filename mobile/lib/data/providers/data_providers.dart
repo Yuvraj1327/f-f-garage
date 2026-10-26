@@ -8,6 +8,7 @@ import '../repositories/availability_repository.dart';
 import '../repositories/booking_repository.dart';
 import '../repositories/catalog_repository.dart';
 import '../repositories/driver_work_repository.dart';
+import '../repositories/garage_settings_repository.dart';
 import '../repositories/health_repository.dart';
 import '../repositories/maps_repository.dart';
 import '../repositories/notification_repository.dart';
@@ -23,6 +24,7 @@ import '../services/catalog_api_service.dart';
 import '../services/checkout_launcher.dart';
 import '../services/contact_launcher.dart';
 import '../services/driver_work_api_service.dart';
+import '../services/garage_settings_api_service.dart';
 import '../services/health_api_service.dart';
 import '../services/location_service.dart';
 import '../services/maps_api_service.dart';
@@ -112,6 +114,12 @@ final notificationRepositoryProvider = Provider<NotificationRepository>(
 
 final supportRepositoryProvider = Provider<SupportRepository>(
   (ref) => SupportRepository(SupportApiService(ref.watch(apiClientProvider))),
+);
+
+final garageSettingsRepositoryProvider = Provider<GarageSettingsRepository>(
+  (ref) => GarageSettingsRepository(
+    GarageSettingsApiService(ref.watch(apiClientProvider)),
+  ),
 );
 
 final mapsRepositoryProvider = Provider<MapsRepository>(

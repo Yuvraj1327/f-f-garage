@@ -21,6 +21,22 @@ class StatusBadge extends StatelessWidget {
   final IconData? icon;
 
   (Color, Color) _colors(ColorScheme scheme) {
+    if (scheme.brightness == Brightness.dark) {
+      // Tinted, not pastel: soft fills would glare on a black page.
+      Color tint(Color c) => c.withValues(alpha: 0.22);
+      switch (tone) {
+        case BadgeTone.info:
+          return (tint(AppColors.primary), const Color(0xFF93C5FD));
+        case BadgeTone.success:
+          return (tint(AppColors.secondary), const Color(0xFF6EE7B7));
+        case BadgeTone.warning:
+          return (tint(AppColors.accent), const Color(0xFFFCD34D));
+        case BadgeTone.danger:
+          return (tint(AppColors.error), const Color(0xFFFCA5A5));
+        case BadgeTone.neutral:
+          return (scheme.surfaceContainerHighest, scheme.onSurfaceVariant);
+      }
+    }
     switch (tone) {
       case BadgeTone.info:
         return (AppColors.primarySoft, AppColors.primaryOnSoft);

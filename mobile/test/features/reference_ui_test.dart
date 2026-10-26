@@ -23,12 +23,12 @@ Finder _stat(String label, String value) => find.descendant(
 
 void main() {
   group('customer bottom navigation', () {
-    testWidgets('shows Home, My Bookings, Support and Profile', (tester) async {
+    testWidgets('shows Home, My Bookings, Support and Settings', (tester) async {
       final harness = AppHarness(role: UserRole.customer);
       await harness.pump(tester);
 
       expect(find.byType(NavigationBar), findsOneWidget);
-      for (final label in ['Home', 'My Bookings', 'Support', 'Profile']) {
+      for (final label in ['Home', 'My Bookings', 'Support', 'Settings']) {
         expect(_navLabel(label), findsOneWidget);
       }
     });
@@ -48,11 +48,11 @@ void main() {
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(find.text('Help & support'), findsWidgets);
 
-      await tester.tap(_navLabel('Profile'));
+      await tester.tap(_navLabel('Settings'));
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(
-        find.descendant(of: find.byType(AppBar), matching: find.text('Profile')),
+        find.descendant(of: find.byType(AppBar), matching: find.text('Settings')),
         findsOneWidget,
       );
 
@@ -60,22 +60,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Hello, Test User'), findsOneWidget);
     });
-
-    for (final role in [UserRole.driver, UserRole.admin]) {
-      testWidgets('${role.name}s never get the customer bar', (tester) async {
-        final harness = AppHarness(role: role);
-        await harness.pump(tester);
-        expect(find.byType(NavigationBar), findsNothing);
-
-        goTo(tester, AppRoutes.profile);
-        await tester.pumpAndSettle();
-        expect(find.byType(NavigationBar), findsNothing);
-
-        goTo(tester, AppRoutes.support);
-        await tester.pumpAndSettle();
-        expect(find.byType(NavigationBar), findsNothing);
-      });
-    }
   });
 
   group('customer home and service list', () {

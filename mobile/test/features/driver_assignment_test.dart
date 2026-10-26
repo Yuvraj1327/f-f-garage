@@ -32,7 +32,7 @@ void main() {
 
       expect(find.textContaining('No jobs assigned to you right now.'),
           findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('tab-history')));
+      await tester.tap(find.byKey(const ValueKey('nav-history')));
       await tester.pumpAndSettle();
       expect(find.text('No finished jobs yet.'), findsOneWidget);
       expect(harness.driverWork.scopes, containsAll(['open', 'history']));
@@ -55,7 +55,7 @@ void main() {
       expect(find.byKey(const ValueKey('job-open1')), findsOneWidget);
       expect(find.byKey(const ValueKey('job-done1')), findsNothing);
 
-      await tester.tap(find.byKey(const ValueKey('tab-history')));
+      await tester.tap(find.byKey(const ValueKey('nav-history')));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('job-done1')), findsOneWidget);
     });

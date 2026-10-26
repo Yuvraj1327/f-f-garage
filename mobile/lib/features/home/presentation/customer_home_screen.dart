@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_routes.dart';
+import '../../../app/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/widgets/customer_nav.dart';
+import '../../../core/widgets/app_nav.dart';
+import '../../../core/widgets/brand_logo.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/service_icon.dart';
 import '../../../data/models/catalog.dart';
@@ -30,7 +32,13 @@ class CustomerHomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('F&F Garage'),
+        title: const Row(
+          children: [
+            BrandLogo(size: 32),
+            SizedBox(width: 10),
+            Text('F&F Garage'),
+          ],
+        ),
         actions: [
           const NotificationBell(),
           IconButton(
@@ -40,7 +48,7 @@ class CustomerHomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      bottomNavigationBar: customerNavFor(ref, CustomerTab.home),
+      bottomNavigationBar: navFor(ref, NavTab.home),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(browseServicesProvider(null).future),
@@ -112,54 +120,73 @@ class CustomerHomeScreen extends ConsumerWidget {
   }
 }
 
+/// The mechanic banner with the "Book a service" button. The picture's left
+/// half is a pale-blue fade, so the (always navy) text sits on it in both themes.
 class _HeroBanner extends StatelessWidget {
   const _HeroBanner();
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [scheme.primaryContainer, scheme.surfaceContainerHighest],
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Reliable Two Wheeler Service At Your Doorstep',
-                  style: textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Book service, track in real time, ride worry free.',
-                  style: textTheme.bodySmall,
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () => context.push(AppRoutes.browseServices),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(140, 44),
-                  ),
-                  child: const Text('Book a service'),
-                ),
-              ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: AspectRatio(
+        aspectRatio: 1672 / 940,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              BrandAssets.homeBanner,
+              key: const ValueKey('home-banner'),
+              fit: BoxFit.cover,
+              alignment: Alignment.centerRight,
+              semanticLabel: 'A mechanic servicing a scooter and a bike at a '
+                  'customer\'s doorstep',
+              errorBuilder: (context, error, stack) =>
+                  const ColoredBox(color: Color(0xFFDBEAFE)),
             ),
-          ),
-          const SizedBox(width: 12),
-          ExcludeSemantics(
-            child: Icon(Icons.two_wheeler, size: 72, color: scheme.primary),
-          ),
-        ],
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: 0.58,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 14),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Reliable Two Wheeler Service At Your Doorstep',
+                        style: textTheme.titleMedium?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Book service, track in real time, ride worry free.',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      FilledButton(
+                        onPressed: () =>
+                            context.push(AppRoutes.browseServices),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(130, 44),
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Book a service'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -133,11 +133,10 @@ void main() {
       harness.gateway.hasStoredSession = false;
       await harness.pump(tester);
 
-      await tapText(tester, 'Admin sign in');
-      expect(find.text('Manage services, service areas and availability.'),
-          findsOneWidget);
+      await tapText(tester, 'Driver & Admin Login');
+      expect(find.text('Driver & Admin Login'), findsOneWidget);
 
-      await enter(tester, 'Email', 'admin@example.com');
+      await enter(tester, 'Driver ID or email', 'admin@example.com');
       await enter(tester, 'Password', 'secret-pass-1');
       await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
       await tester.pumpAndSettle();
@@ -147,19 +146,19 @@ void main() {
       expect(find.text('Availability'), findsOneWidget);
     });
 
-    testWidgets('a customer account is refused on the admin sign-in',
+    testWidgets('a customer account is refused on the staff sign-in',
         (tester) async {
       final harness = AppHarness(role: UserRole.customer);
       harness.gateway.hasStoredSession = false;
       await harness.pump(tester);
 
-      await tapText(tester, 'Admin sign in');
-      await enter(tester, 'Email', 'user@example.com');
+      await tapText(tester, 'Driver & Admin Login');
+      await enter(tester, 'Driver ID or email', 'user@example.com');
       await enter(tester, 'Password', 'secret-pass-1');
       await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
       await tester.pumpAndSettle();
 
-      expect(find.text(AuthFailure.notAdminAccount.message), findsOneWidget);
+      expect(find.text(AuthFailure.notStaffAccount.message), findsOneWidget);
       expect(find.text('Service areas'), findsNothing);
       expect(harness.gateway.hasSession, isFalse);
     });

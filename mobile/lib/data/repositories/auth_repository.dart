@@ -81,6 +81,45 @@ class AuthRepository {
     return _loadProfileFor(UserRole.driver);
   }
 
+  /// The shared "Driver & Admin Login". [identifier] is a driver ID or an
+  /// email address. Supabase proves who the user is, then the backend profile
+  /// decides where they go: driver -> driver area, admin -> admin area. A
+  /// customer account (or an inactive one) is signed straight back out.
+  Future<UserProfile> signInStaff({
+    required String identifier,
+    required String password,
+  }) async {
+    final text = identifier.trim();
+    final isEmail = text.contains('@');
+    try {
+      await _gateway.signInWithPassword(
+        email: isEmail ? text.toLowerCase() : _config.driverEmailFor(text),
+        password: password,
+      );
+    } on AuthFailure catch (failure) {
+      if (failure.type == AuthFailureType.invalidCredentials) {
+        throw AuthFailure.invalidStaffCredentials;
+      }
+      rethrow;
+    }
+    final UserProfile profile;
+    try {
+      profile = await _profiles.getMyProfile();
+    } on ApiException catch (error) {
+      await _gateway.signOut();
+      throw _failureFor(error);
+    }
+    if (profile.role != UserRole.driver && profile.role != UserRole.admin) {
+      await _gateway.signOut();
+      throw AuthFailure.notStaffAccount;
+    }
+    if (!profile.isActive) {
+      await _gateway.signOut();
+      throw AuthFailure.accountDisabled;
+    }
+    return profile;
+  }
+
   Future<UserProfile> signInAdmin({
     required String email,
     required String password,
@@ -160,6 +199,29 @@ class AuthRepository {
       }
       rethrow;
     }
+  }
+
+  /// Changes the password of [profile]'s own account after checking the
+  /// current one. Drivers have no email of their own: their sign-in address is
+  /// built from the driver ID, exactly as at sign-in. Throws [AuthFailure].
+  Future<void> changePassword({
+    required UserProfile profile,
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    final email = (profile.email != null && profile.email!.isNotEmpty)
+        ? profile.email!.toLowerCase()
+        : (profile.driverLoginId != null && profile.driverLoginId!.isNotEmpty
+            ? _config.driverEmailFor(profile.driverLoginId!)
+            : null);
+    if (email == null) {
+      throw AuthFailure.noPasswordSet;
+    }
+    return _gateway.changePassword(
+      email: email,
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
   }
 
   Future<void> signOut() => _gateway.signOut();

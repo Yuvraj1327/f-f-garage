@@ -140,6 +140,85 @@ void main() {
     });
   });
 
+  group('driver & admin sign-in', () {
+    test('a driver ID becomes the synthetic email, case-insensitively',
+        () async {
+      repo = build(UserRole.driver);
+      final profile =
+          await repo.signInStaff(identifier: ' Ravi01 ', password: 'pw');
+      expect(profile.role, UserRole.driver);
+      expect(gateway.lastEmail, 'ravi01@drivers.ffgarage.invalid');
+    });
+
+    test('an email is used as typed (lower-cased) for an admin', () async {
+      repo = build(UserRole.admin);
+      final profile = await repo.signInStaff(
+        identifier: ' Boss@Example.com ',
+        password: 'pw',
+      );
+      expect(profile.role, UserRole.admin);
+      expect(gateway.lastEmail, 'boss@example.com');
+      expect(gateway.signOutCalls, 0);
+    });
+
+    test('a customer account is rejected and signed straight back out',
+        () async {
+      repo = build(UserRole.customer);
+      await expectLater(
+        repo.signInStaff(identifier: 'a@b.co', password: 'pw'),
+        throwsA(failure(AuthFailureType.wrongAccountType)),
+      );
+      expect(gateway.signOutCalls, 1);
+      expect(gateway.hasSession, isFalse);
+    });
+
+    test('a disabled driver or admin is rejected', () async {
+      for (final role in [UserRole.driver, UserRole.admin]) {
+        repo = build(role, isActive: false);
+        await expectLater(
+          repo.signInStaff(identifier: 'ravi01', password: 'pw'),
+          throwsA(failure(AuthFailureType.accountDisabled)),
+        );
+        expect(gateway.hasSession, isFalse);
+      }
+    });
+
+    test('wrong credentials give the staff message', () async {
+      repo = build(UserRole.driver);
+      gateway.signInError = AuthFailure.invalidCredentials;
+      await expectLater(
+        repo.signInStaff(identifier: 'ravi01', password: 'bad'),
+        throwsA(
+          isA<AuthFailure>().having(
+            (f) => f.message,
+            'message',
+            AuthFailure.invalidStaffCredentials.message,
+          ),
+        ),
+      );
+    });
+
+    test('an unreachable backend signs out and reports the network',
+        () async {
+      repo = build(UserRole.driver);
+      profiles.error = networkError;
+      await expectLater(
+        repo.signInStaff(identifier: 'ravi01', password: 'pw'),
+        throwsA(failure(AuthFailureType.network)),
+      );
+      expect(gateway.hasSession, isFalse);
+    });
+
+    test('customers still cannot use the customer sign-in as staff and vice versa',
+        () async {
+      repo = build(UserRole.driver);
+      await expectLater(
+        repo.signInCustomer(email: 'a@b.co', password: 'pw'),
+        throwsA(failure(AuthFailureType.wrongAccountType)),
+      );
+    });
+  });
+
   group('driver sign-in', () {
     test('builds the synthetic email from the ID, case-insensitively',
         () async {

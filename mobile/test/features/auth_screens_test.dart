@@ -1,4 +1,5 @@
 import 'package:ff_garage/app/app.dart';
+import 'package:ff_garage/app/router/app_router.dart';
 import 'package:ff_garage/core/config/app_config.dart';
 import 'package:ff_garage/core/network/auth_failure.dart';
 import 'package:ff_garage/core/providers/core_providers.dart';
@@ -101,27 +102,128 @@ void main() {
     });
   });
 
-  group('driver login', () {
-    testWidgets('signs in with a driver ID and reaches the driver home',
+  group('driver & admin login', () {
+    Future<void> openStaff(WidgetTester tester) async {
+      await tester.pumpWidget(_app(gateway, profiles));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Driver & Admin Login'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> signIn(WidgetTester tester, String id, String pw) async {
+      await tester.enterText(_field('Driver ID or email'), id);
+      await tester.enterText(_field('Password'), pw);
+      await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the customer screen has one bottom link for staff',
         (tester) async {
-      gateway = FakeAuthGateway();
-      profiles = FakeProfileRepository(profileFor(UserRole.driver));
+      useCustomer();
       await tester.pumpWidget(_app(gateway, profiles));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('I am a driver'));
-      await tester.pumpAndSettle();
-      expect(find.text('Driver sign in'), findsOneWidget);
-      // There is no registration option for drivers.
+      expect(find.text('Driver & Admin Login'), findsOneWidget);
+      expect(find.text('I am a driver'), findsNothing);
+      expect(find.text('Admin sign in'), findsNothing);
+      // Customer sign-in, sign-up and Google are unchanged.
+      expect(find.text('Welcome back'), findsOneWidget);
+      expect(find.text('New here? Create an account'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
+    });
+
+    testWidgets('a driver signs in with a driver ID and reaches the driver home',
+        (tester) async {
+      gateway = FakeAuthGateway();
+      profiles = FakeProfileRepository(profileFor(UserRole.driver));
+      await openStaff(tester);
+      expect(find.text('Driver & Admin Login'), findsOneWidget);
+      // There is no registration option for staff.
       expect(find.textContaining('Create'), findsNothing);
 
-      await tester.enterText(_field('Driver ID'), 'Ravi01');
-      await tester.enterText(_field('Password'), 'driver-pass');
-      await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
-      await tester.pumpAndSettle();
+      await signIn(tester, 'Ravi01', 'driver-pass');
 
       expect(gateway.lastEmail, 'ravi01@drivers.ffgarage.invalid');
-      expect(find.text('Your assigned jobs will appear here.'), findsOneWidget);
+      expect(find.text('No jobs assigned to you right now.'), findsOneWidget);
+    });
+
+    testWidgets('a driver can also sign in with an email address',
+        (tester) async {
+      gateway = FakeAuthGateway();
+      profiles = FakeProfileRepository(profileFor(UserRole.driver));
+      await openStaff(tester);
+
+      await signIn(tester, ' Ravi@Example.com ', 'driver-pass');
+
+      expect(gateway.lastEmail, 'ravi@example.com');
+      expect(find.text('No jobs assigned to you right now.'), findsOneWidget);
+    });
+
+    testWidgets('a customer account is turned away and signed out',
+        (tester) async {
+      useCustomer();
+      await openStaff(tester);
+
+      await signIn(tester, 'user@example.com', 'secret-pass-1');
+
+      expect(find.text(AuthFailure.notStaffAccount.message), findsOneWidget);
+      expect(find.text('Driver & Admin Login'), findsOneWidget);
+      expect(gateway.hasSession, isFalse);
+    });
+
+    testWidgets('wrong credentials show one clear message', (tester) async {
+      gateway = FakeAuthGateway()..signInError = AuthFailure.invalidCredentials;
+      profiles = FakeProfileRepository(profileFor(UserRole.driver));
+      await openStaff(tester);
+
+      await signIn(tester, 'ravi01', 'bad-password');
+
+      expect(
+        find.text('Incorrect driver ID, email or password.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('validates before calling the server', (tester) async {
+      useCustomer();
+      await openStaff(tester);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+      await tester.pump();
+      expect(find.text('Enter your driver ID or email'), findsOneWidget);
+      expect(find.text('Enter your password'), findsOneWidget);
+
+      await tester.enterText(_field('Driver ID or email'), 'not an id');
+      await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+      await tester.pump();
+      expect(find.textContaining('Driver ID uses letters'), findsOneWidget);
+      expect(gateway.lastEmail, isNull);
+    });
+
+    testWidgets('"I am a customer" goes back to the customer login',
+        (tester) async {
+      useCustomer();
+      await openStaff(tester);
+
+      await tester.tap(find.text('I am a customer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Welcome back'), findsOneWidget);
+    });
+
+    testWidgets('the old separate addresses open the same screen',
+        (tester) async {
+      useCustomer();
+      await tester.pumpWidget(_app(gateway, profiles));
+      await tester.pumpAndSettle();
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(FfGarageApp)),
+      );
+      for (final old in ['/driver-login', '/admin-login']) {
+        container.read(routerProvider).go(old);
+        await tester.pumpAndSettle();
+        expect(find.text('Driver & Admin Login'), findsOneWidget, reason: old);
+      }
     });
   });
 
@@ -234,7 +336,9 @@ void main() {
       await tester.pumpWidget(_app(gateway, profiles));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Profile'));
+      await tester.tap(find.byKey(const ValueKey('nav-settings')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('settings-profile')));
       await tester.pumpAndSettle();
 
       expect(find.text('ravi01'), findsOneWidget);

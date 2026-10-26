@@ -4,9 +4,22 @@ abstract final class AppRoutes {
   static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String register = '/register';
+  /// The one sign-in for drivers and admins.
+  static const String staffLogin = '/staff-login';
+
+  /// Old addresses of the separate screens; they open [staffLogin].
   static const String driverLogin = '/driver-login';
   static const String adminLogin = '/admin-login';
   static const String profile = '/profile';
+
+  // Settings: one screen for every role, plus its pages.
+  static const String settings = '/settings';
+  static const String settingsPassword = '/settings/password';
+  static const String settingsAbout = '/settings/about';
+  static const String settingsPrivacy = '/settings/privacy';
+
+  /// Garage name, phone, email, ... (administrators only).
+  static const String settingsGarage = '/settings/garage';
   static const String support = '/support';
 
   /// Support screen opened from a booking, so the message can quote its code.
@@ -37,6 +50,8 @@ abstract final class AppRoutes {
 
   // Driver area: everything under /driver
   static const String driverHome = '/driver';
+  static const String driverHistory = '/driver/history';
+  static const String driverEarnings = '/driver/earnings';
   static String driverBooking(String id) => '/driver/bookings/$id';
 
   // Admin area: everything under /admin

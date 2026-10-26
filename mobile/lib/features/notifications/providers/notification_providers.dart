@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/preferences/app_preferences.dart';
 import '../../../data/providers/data_providers.dart';
 import '../../booking/providers/booking_providers.dart';
 
@@ -19,8 +20,11 @@ final _lastUnreadProvider = StateProvider<int?>((ref) => null);
 /// count goes up, something happened to a booking, so the booking screens are
 /// told to reload too.
 final unreadCountProvider = FutureProvider.autoDispose<int>((ref) async {
-  final timer = Timer(ref.watch(trackingPollIntervalProvider), ref.invalidateSelf);
-  ref.onDispose(timer.cancel);
+  if (ref.watch(notificationPrefsProvider.select((p) => p.autoRefresh))) {
+    final timer =
+        Timer(ref.watch(trackingPollIntervalProvider), ref.invalidateSelf);
+    ref.onDispose(timer.cancel);
+  }
   final count = await ref.watch(notificationRepositoryProvider).unreadCount();
   final last = ref.read(_lastUnreadProvider);
   ref.read(_lastUnreadProvider.notifier).state = count;

@@ -129,12 +129,9 @@ class _CustomerLoginScreenState extends ConsumerState<CustomerLoginScreen> {
           child: const Text('New here? Create an account'),
         ),
         TextButton(
-          onPressed: _busy ? null : () => context.go(AppRoutes.driverLogin),
-          child: const Text('I am a driver'),
-        ),
-        TextButton(
-          onPressed: _busy ? null : () => context.go(AppRoutes.adminLogin),
-          child: const Text('Admin sign in'),
+          key: const ValueKey('staff-login-link'),
+          onPressed: _busy ? null : () => context.go(AppRoutes.staffLogin),
+          child: const Text('Driver & Admin Login'),
         ),
       ],
     );

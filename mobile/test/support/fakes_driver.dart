@@ -60,6 +60,7 @@ DriverJob driverJob({
   BookingStatus? next = BookingStatus.onTheWay,
   double? latitude,
   double? longitude,
+  DateTime? date,
 }) =>
     DriverJob(
       id: id,
@@ -76,7 +77,7 @@ DriverJob driverJob({
       longitude: longitude,
       city: 'Bengaluru',
       pincode: '560001',
-      date: DateTime(2026, 10, 21),
+      date: date ?? DateTime(2026, 10, 21),
       slotStart: const ClockTime(9, 0),
       slotEnd: const ClockTime(11, 0),
       charges: const [],

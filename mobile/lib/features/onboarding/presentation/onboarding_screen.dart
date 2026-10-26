@@ -61,7 +61,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final textTheme = Theme.of(context).textTheme;
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     return Scaffold(
-      backgroundColor: Colors.white,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -175,7 +174,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                     borderRadius: BorderRadius.circular(4),
                                     color: i == _page
                                         ? AppColors.primary
-                                        : const Color(0xFFCBD5E1),
+                                        : Theme.of(context).colorScheme.outline,
                                   ),
                                 ),
                             ],

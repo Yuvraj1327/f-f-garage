@@ -61,19 +61,13 @@ void main() {
       expect(find.text('Continue with Google'), findsOneWidget);
     });
 
-    testWidgets('driver sign-in has no Google option', (tester) async {
+    testWidgets('the driver & admin sign-in has no Google option',
+        (tester) async {
       await tester.pumpWidget(_app(gateway, customer()));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('I am a driver'));
+      await tester.tap(find.text('Driver & Admin Login'));
       await tester.pumpAndSettle();
-      expect(find.text('Continue with Google'), findsNothing);
-    });
-
-    testWidgets('admin sign-in has no Google option', (tester) async {
-      await tester.pumpWidget(_app(gateway, customer()));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Admin sign in'));
-      await tester.pumpAndSettle();
+      expect(find.text('Driver & Admin Login'), findsWidgets);
       expect(find.text('Continue with Google'), findsNothing);
     });
   });

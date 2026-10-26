@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_routes.dart';
+import '../../../core/widgets/app_nav.dart';
 import '../../../core/widgets/async_view.dart';
 import '../../../core/widgets/form_widgets.dart';
 import '../../../core/widgets/status_badge.dart';
@@ -18,6 +19,7 @@ class AdminDriversScreen extends ConsumerWidget {
     final drivers = ref.watch(adminDriversProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Drivers')),
+      bottomNavigationBar: navFor(ref, NavTab.drivers),
       floatingActionButton: FloatingActionButton.extended(
         key: const ValueKey('add-driver'),
         onPressed: () => context.push(AppRoutes.adminDriverNew),

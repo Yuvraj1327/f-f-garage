@@ -8,6 +8,7 @@ import '../../../core/widgets/async_view.dart';
 import '../../../core/widgets/filter_pill.dart';
 import '../../../core/widgets/service_icon.dart';
 import '../../../core/widgets/skeleton.dart';
+import '../../../core/widgets/vehicle_banner.dart';
 import '../../../data/models/catalog.dart';
 import '../../../data/models/enums.dart';
 import '../providers/catalog_providers.dart';
@@ -99,6 +100,8 @@ class _ServiceListState extends ConsumerState<_ServiceList>
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.all(16),
             children: [
+              VehicleBanner(type: type),
+              const SizedBox(height: 12),
               TextField(
                 textInputAction: TextInputAction.search,
                 onChanged: (v) => setState(() => _query = v),

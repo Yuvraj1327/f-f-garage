@@ -13,6 +13,7 @@ from app.api.deps import (
     get_booking_repository,
     get_booking_service,
     get_catalog_repository,
+    get_garage_settings_repository,
     get_notification_repository,
     get_payment_gateway,
     get_payment_repository,
@@ -33,6 +34,7 @@ from tests.fakes_catalog import (
     FakeCatalogRepository,
     FakeServiceAreaRepository,
 )
+from tests.fakes_garage import FakeGarageSettings
 from tests.fakes_payment import FakeGateway, FakePaymentRepository
 from tests.fakes_tracking import FakeTracking
 from tests.jwt_helpers import HS256_SECRET, make_token
@@ -65,11 +67,13 @@ class Ctx:
         self.payments = FakePaymentRepository(self.bookings)
         self.gateway = FakeGateway()
         self.assignments = FakeAssignmentRepository(self.bookings, self.profiles, self.payments)
+        self.garage = FakeGarageSettings()
         self.tracking = FakeTracking(self.bookings, self.assignments, self.payments, self.profiles)
 
         app = create_app(self.settings)
         app.dependency_overrides[get_profile_repository] = lambda: self.profiles
         app.dependency_overrides[get_catalog_repository] = lambda: self.catalog
+        app.dependency_overrides[get_garage_settings_repository] = lambda: self.garage
         app.dependency_overrides[get_service_area_repository] = lambda: self.areas
         app.dependency_overrides[get_availability_repository] = lambda: self.availability
         app.dependency_overrides[get_availability_service] = lambda: AvailabilityService(

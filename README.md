@@ -58,6 +58,7 @@ ff-garage/
 | `service_packages` | Priced packages inside a service, with inclusions |
 | `extra_charges` | Spare-part / engine-oil / other charges, per service or per package |
 | `service_areas` | Serviceable PIN codes (one row per PIN) |
+| `garage_settings` | One row: the garage's name and contact details, edited by admins (backend-only access) |
 | `bookings` | Customer bookings with name/address/price/service/package snapshots, schedule and status (see *Booking system*) |
 | `booking_extra_charges` | Extra charges as they were when the booking was made (immutable snapshot rows) |
 | `driver_assignments` | Which driver is assigned to a booking (history kept; one active per booking) |
@@ -355,6 +356,12 @@ The screen also lists four short "common questions". If the device cannot open a
 
 **Platforms.** Android and iOS are the supported targets. Flutter Web is not a target of this project: `razorpay_flutter` has no web support, so payment cannot work there; the rest of the UI is written to be width-responsive.
 
+## Sign-in screens
+
+- Customers: email + password, sign-up and Continue with Google (unchanged). The only staff entry is the bottom link **Driver & Admin Login**.
+- Drivers and admins share one screen (`/staff-login`): a driver ID *or* an email plus password, no sign-up, no Google. After Supabase accepts the password the app loads the backend profile and goes by its role (driver -> driver jobs, admin -> admin dashboard); a customer or disabled account is signed straight back out. The old `/driver-login` and `/admin-login` addresses open the same screen.
+- Accounts: public sign-up (including a crafted API call) can only ever create a *customer* (database trigger). Driver accounts are created by an admin only, in the admin app (Drivers > Add driver: name, driver ID, password), through `POST /api/v1/admin/drivers` (admin role required), which uses the Supabase service role on the server; the admin stays signed in. Admin accounts are created by the project owner in Supabase (see "Creating the first admin").
+
 ## Branding, onboarding and theme
 
 - `mobile/assets/images/logo.jpg` is the F&F Two Wheeler Garage logo (splash, sign-in and sign-up, onboarding) and `onboarding_hero.jpg` the onboarding picture. Both are shown with `BoxFit.contain`, so they are never stretched or cropped. The logo has a white background, so it sits on white screens. `BrandLogo` falls back to a plain badge if the file is missing.
@@ -495,6 +502,31 @@ The Phase 8 `url_launcher` query entries (above, in "UI polish and support") are
 **Location permission and fallbacks.** "Use my current location" and "My location" ask for *while-in-use* location permission, only when tapped. If location is switched off, refused, blocked for good, slow (15 s timeout) or not available, the screen says so in one sentence and offers **Settings** where that can help; the customer can always pick on the map, search, or type the address. Address lookup failures never block a booking: the pin can still be used and the address typed. A lost map or lookup service never blocks the booking form.
 
 **Not verified here.** The Flutter code and its tests (the fake map and location service used in `test/features/maps_test.dart`) were written without a Flutter SDK, so `flutter pub get`, `flutter analyze` and `flutter test` have **not been run**, and the real Google map and the two Google flows have not been exercised on a device or against real Google/Supabase projects. Run `flutter analyze && flutter test` first, then try both features on an emulator before relying on them.
+
+## Images
+
+`mobile/assets/images/` (the whole folder is registered in `pubspec.yaml`): `logo.png` (the F&F logo, corners made transparent; used on splash, onboarding, sign-in, About and the home header), `scooter.jpg` and `bike.jpg` (top of the Scooter and Bike service lists and of each service), `home_banner.jpg` (the mechanic banner on Customer Home, with the "Book a service" button) and `onboarding_hero.jpg`. Pictures are shown at their own aspect ratio. The old `logo.jpg` is replaced by `logo.png`.
+
+## Navigation, settings and themes
+
+**Bottom navigation (by role).** One bar, built from `mobile/lib/core/widgets/app_nav.dart`; each role only ever receives its own items, and the router keeps each role inside its own area:
+
+| Role | Tabs |
+| --- | --- |
+| Customer | Home, My Bookings, Support, Settings |
+| Driver | My Jobs, History, Earnings, Settings |
+| Admin | Dashboard, Bookings, Drivers, Services, Settings |
+
+Service areas, Availability and Garage details stay on the Admin Dashboard. There are no Customers or Reports screens and no backend for them, so none were added. **Earnings** shows real work counts only: driver pay is not recorded anywhere, so no amounts are shown.
+
+**Settings** (`/settings`, every role): profile summary, Edit profile (customers change name and mobile; drivers and admins see theirs read-only, as before; no screen or API can change a role), Change password, theme, Help & Support, About App, Privacy Policy and Logout. Customers also get two notification switches (unread badge, keep updates live). They are stored on the phone only; the app sends no push messages.
+
+- **Change password** re-checks the current password with Supabase Auth, then sets the new one (drivers are checked against their driver-ID sign-in). A Google-only account has no app password.
+- **Garage details** (admin only, `/settings/garage`): name, phone, WhatsApp, email, address and opening hours, saved by `PUT /admin/garage-settings` into the single-row `garage_settings` table (migration `20261026100000_garage_settings.sql`; only the backend's service role can touch it). Until an admin saves, the server's `GARAGE_*` values are used. Help & Support and About show whatever is saved, so no app release is needed. The route is admin-only in the app and on the backend.
+- **Not built:** logo upload (needs file storage), PDF booking/payment exports and invoice branding (no report or invoice backend exists).
+- The **Privacy Policy** page is a plain-language summary; replace it with your legal text.
+
+**Themes.** Light (default: white pages, royal-blue buttons, navy text), Dark (black page, dark-grey cards, white text, blue buttons) and System default. One `ThemeController` (`core/preferences/app_preferences.dart`) feeds `MaterialApp.themeMode`; both `ThemeData` objects come from `app/theme/app_theme.dart`. The choice is saved with `shared_preferences`, so it survives restarts, logout and the next sign-in. Status badges and the logo (which sits on a white plate) adapt to the theme.
 
 ## Environment variables
 
