@@ -94,6 +94,10 @@ update public.profiles set role = 'driver', driver_login_id = 'driver02'
 update public.profiles set role = 'admin' where id = '55555555-5555-5555-5555-555555555555';
 update public.profiles set is_active = false where id = '66666666-6666-6666-6666-666666666666';
 
+-- The migrations seed the 3 default services (checked in 00_service_seed_test.sql); these
+-- tests count rows, so they start from an empty catalogue.
+delete from public.services;
+
 insert into public.services (id, name, vehicle_type, description, is_active) values
   ('a0000000-0000-0000-0000-000000000001', 'General Service', 'scooter', 'Routine service', true),
   ('a0000000-0000-0000-0000-000000000002', 'Legacy Service', 'bike', 'Retired', false),

@@ -25,6 +25,7 @@ def test_every_role_can_read(ctx: Ctx, who):  # noqa: F811
         "address",
         "hours",
         "refund_policy",
+        "advance_percent",
     }
 
 

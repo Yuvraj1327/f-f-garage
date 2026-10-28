@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_routes.dart';
+import '../../../app/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../core/widgets/brand_logo.dart' show BrandAssets;
@@ -10,6 +11,7 @@ import '../../../core/widgets/service_icon.dart';
 import '../../../data/models/catalog.dart';
 import '../../../data/models/enums.dart';
 import '../../booking/providers/booking_providers.dart';
+import '../../vehicles/providers/vehicle_providers.dart';
 
 /// The packages a customer can buy now.
 List<ServicePackage> activePackages(GarageService service) =>
@@ -38,118 +40,180 @@ void addServiceToCart(BuildContext context, WidgetRef ref, GarageService service
   );
 }
 
-/// A service in the catalogue: picture, name, short description, price,
-/// duration and warranty, with Add and View details.
+/// A service in the catalogue: square picture, name, short text, price with
+/// any discount, and a coloured footer with "View details" and Add.
+///
+/// The admin screens reuse this card: they pass [adminControls] (shown under the
+/// card in place of Add) so the admin sees what customers see.
 class ServiceCard extends ConsumerWidget {
-  const ServiceCard({super.key, required this.service});
+  const ServiceCard({
+    super.key,
+    required this.service,
+    this.footerColor,
+    this.adminControls,
+    this.onOpen,
+  });
 
   final GarageService service;
+
+  /// The footer colour; null picks one from the service's position.
+  final Color? footerColor;
+
+  /// Management controls (admin). Null for customers.
+  final Widget? adminControls;
+
+  /// Where a tap goes; defaults to the customer detail screen.
+  final VoidCallback? onOpen;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
     final packages = activePackages(service);
     final cheapest = packages.isEmpty
         ? null
         : packages.reduce((a, b) => a.price <= b.price ? a : b);
     final inCart = ref.watch(bookingFlowProvider).service?.id == service.id;
-    final duration = cheapest?.estimatedDurationMinutes;
-    final warranty = cheapest?.warrantyLabel;
+    final vehicle =
+        adminControls == null ? ref.watch(selectedVehicleProvider) : null;
+    final fits = vehicle == null || service.supports(vehicle.make, vehicle.model);
+    final color = footerColor ?? _footerColors[_colorIndex(service.id)];
+    final open = onOpen ?? () => context.push(AppRoutes.serviceDetail(service.id));
+    final discount = cheapest?.discountLabel;
+    final offer = service.badge;
     return Card(
       key: ValueKey('service-${service.id}'),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.push(AppRoutes.serviceDetail(service.id)),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+      margin: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: open,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ServiceImage(service: service, size: 84),
+                  Stack(
+                    children: [
+                      ServiceImage(service: service, size: 96),
+                      if (offer != null)
+                        Positioned(left: 0, top: 0, child: _Badge(text: offer)),
+                    ],
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (service.badge != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: _Badge(text: service.badge!),
-                          ),
                         Text(service.name, style: textTheme.titleMedium),
-                        if (service.description != null)
+                        if (service.cardText != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
-                              service.description!,
+                              service.cardText!,
                               style: textTheme.bodySmall,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                        const SizedBox(height: 6),
+                        if (cheapest != null)
+                          _Price(package: cheapest, from: packages.length > 1)
+                        else
+                          const Text('Not available right now'),
+                        if (!fits)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Not available for your '
+                              '${vehicle!.make} ${vehicle.model}',
+                              key: ValueKey('unsupported-${service.id}'),
+                              style: textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  if (duration != null)
-                    _Meta(icon: Icons.schedule, text: formatDuration(duration)),
-                  if (warranty != null)
-                    _Meta(icon: Icons.verified_outlined, text: '$warranty warranty'),
-                  if (packages.length > 1)
-                    _Meta(
-                      icon: Icons.layers_outlined,
-                      text: '${packages.length} options',
+                  if (discount != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Text(
+                        discount,
+                        key: ValueKey('discount-${service.id}'),
+                        style: textTheme.labelMedium?.copyWith(
+                          color: AppColors.secondaryOnSoft,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Row(
+            ),
+          ),
+          if (adminControls != null)
+            adminControls!
+          else
+            Container(
+              color: color,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
                 children: [
-                  if (cheapest != null)
-                    Expanded(child: _Price(package: cheapest, from: packages.length > 1))
-                  else
-                    const Expanded(child: Text('Not available right now')),
-                  TextButton(
-                    key: ValueKey('details-${service.id}'),
-                    onPressed: () =>
-                        context.push(AppRoutes.serviceDetail(service.id)),
-                    child: const Text('View details'),
+                  Expanded(
+                    child: TextButton(
+                      key: ValueKey('details-${service.id}'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        alignment: Alignment.centerLeft,
+                      ),
+                      onPressed: open,
+                      child: const Text('View details  >'),
+                    ),
                   ),
-                  const SizedBox(width: 4),
                   if (inCart)
-                    OutlinedButton.icon(
+                    FilledButton.icon(
                       key: ValueKey('added-${service.id}'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: color,
+                        disabledBackgroundColor: Colors.white,
+                        disabledForegroundColor: color,
+                      ),
                       onPressed: null,
-                      icon: Icon(Icons.check, color: scheme.primary),
+                      icon: const Icon(Icons.check),
                       label: const Text('Added'),
                     )
                   else
                     FilledButton(
                       key: ValueKey('add-${service.id}'),
-                      onPressed: cheapest == null
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: color,
+                      ),
+                      onPressed: cheapest == null || !fits
                           ? null
                           : () => addServiceToCart(context, ref, service),
-                      child: const Text('Add'),
+                      child: const Text('ADD'),
                     ),
                 ],
               ),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }
 }
+
+const List<Color> _footerColors = [
+  Color(0xFF2563EB),
+  Color(0xFF1E3A5F),
+  Color(0xFFEA580C),
+];
+
+int _colorIndex(String id) =>
+    id.codeUnits.fold<int>(0, (a, b) => a + b) % _footerColors.length;
 
 /// The 1:1 thumbnail of a service: the admin's picture, else the bundled one
 /// for the three headline services, else the category icon in a light-blue
@@ -163,7 +227,7 @@ class ServiceImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fallback = ServiceThumb(category: service.category, size: size);
-    final url = service.imageUrl;
+    final url = service.thumbnail;
     final asset = serviceAssetFor(service.name);
     final Widget? picture;
     if (url != null) {
@@ -212,7 +276,7 @@ class ServiceBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final asset = serviceAssetFor(service.name);
-    final url = service.imageUrl;
+    final url = service.banner;
     Widget fallback() => asset != null
         ? _assetBanner(asset)
         : _frame(ServiceBannerFallback(service: service));
@@ -274,41 +338,22 @@ class _Badge extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
+      key: const ValueKey('offer-badge'),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: scheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(8),
+        color: scheme.error,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(14),
+          bottomRight: Radius.circular(10),
+        ),
       ),
       child: Text(
         text,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: scheme.onSecondaryContainer,
-              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
             ),
       ),
-    );
-  }
-}
-
-class _Meta extends StatelessWidget {
-  const _Meta({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.onSurfaceVariant;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
-        ),
-      ],
     );
   }
 }

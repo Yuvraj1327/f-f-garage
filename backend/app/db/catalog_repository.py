@@ -7,7 +7,7 @@ from supabase import Client
 
 from app.db.postgrest import run
 from app.domain.enums import VehicleType
-from app.schemas.catalog import ExtraChargeOut, PackageOut, ServiceOut
+from app.schemas.catalog import CategoryOut, ExtraChargeOut, PackageOut, ServiceOut
 
 
 class CatalogRepository(Protocol):
@@ -24,6 +24,16 @@ class CatalogRepository(Protocol):
     def create_service(self, values: dict[str, Any]) -> ServiceOut: ...
 
     def update_service(self, service_id: UUID, values: dict[str, Any]) -> ServiceOut | None: ...
+
+    def delete_service(self, service_id: UUID) -> bool: ...
+
+    def list_categories(self, *, active_only: bool = False) -> list[CategoryOut]: ...
+
+    def get_category(self, category_id: UUID) -> CategoryOut | None: ...
+
+    def create_category(self, values: dict[str, Any]) -> CategoryOut: ...
+
+    def update_category(self, category_id: UUID, values: dict[str, Any]) -> CategoryOut | None: ...
 
     def list_packages(
         self, service_ids: list[UUID], *, active_only: bool = False
@@ -52,6 +62,7 @@ class CatalogRepository(Protocol):
 
 class SupabaseCatalogRepository:
     SERVICES = "services"
+    CATEGORIES = "service_categories"
     PACKAGES = "service_packages"
     EXTRAS = "extra_charges"
 
@@ -96,6 +107,43 @@ class SupabaseCatalogRepository:
             conflict="A service with this name already exists for this vehicle type",
         )
         return ServiceOut.model_validate(rows[0]) if rows else None
+
+    def delete_service(self, service_id: UUID) -> bool:
+        """Packages and extra charges go with it; a service that was ever booked refuses."""
+        return bool(
+            run(
+                self._client.table(self.SERVICES).delete().eq("id", str(service_id)),
+                in_use="This service has bookings, so it cannot be deleted. Switch it off instead.",
+            )
+        )
+
+    # ---- categories --------------------------------------------------------------------
+    def list_categories(self, *, active_only: bool = False) -> list[CategoryOut]:
+        query = self._client.table(self.CATEGORIES).select("*")
+        if active_only:
+            query = query.eq("is_active", True)
+        rows = run(query.order("display_order").order("name"))
+        return [CategoryOut.model_validate(row) for row in rows]
+
+    def get_category(self, category_id: UUID) -> CategoryOut | None:
+        rows = run(
+            self._client.table(self.CATEGORIES).select("*").eq("id", str(category_id)).limit(1)
+        )
+        return CategoryOut.model_validate(rows[0]) if rows else None
+
+    def create_category(self, values: dict[str, Any]) -> CategoryOut:
+        rows = run(
+            self._client.table(self.CATEGORIES).insert(values),
+            conflict="A category with this name already exists",
+        )
+        return CategoryOut.model_validate(rows[0])
+
+    def update_category(self, category_id: UUID, values: dict[str, Any]) -> CategoryOut | None:
+        rows = run(
+            self._client.table(self.CATEGORIES).update(values).eq("id", str(category_id)),
+            conflict="A category with this name already exists",
+        )
+        return CategoryOut.model_validate(rows[0]) if rows else None
 
     # ---- packages ----------------------------------------------------------------------
     def list_packages(

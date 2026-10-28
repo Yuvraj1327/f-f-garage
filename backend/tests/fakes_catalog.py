@@ -9,7 +9,7 @@ from uuid import UUID
 from app.core.errors import ConflictError
 from app.domain.enums import VehicleType
 from app.schemas.availability import ExceptionOut, TimeSlotOut
-from app.schemas.catalog import ExtraChargeOut, PackageOut, ServiceOut
+from app.schemas.catalog import CategoryOut, ExtraChargeOut, PackageOut, ServiceOut
 from app.schemas.service_area import ServiceAreaOut
 
 
@@ -26,6 +26,54 @@ class FakeCatalogRepository:
         self.services: dict[UUID, ServiceOut] = {}
         self.packages: dict[UUID, PackageOut] = {}
         self.extras: dict[UUID, ExtraChargeOut] = {}
+        self.categories: dict[UUID, CategoryOut] = {}
+        # Set by the test context so a booked service refuses to be deleted, like the DB.
+        self.bookings = None
+
+    # categories
+    def list_categories(self, *, active_only=False):
+        rows = [c for c in self.categories.values() if c.is_active or not active_only]
+        return sorted(rows, key=lambda c: (c.display_order, c.name))
+
+    def get_category(self, category_id):
+        return self.categories.get(category_id)
+
+    def _check_category_name(self, name, ignore=None):
+        for c in self.categories.values():
+            if c.id != ignore and c.name.strip().lower() == name.strip().lower():
+                raise ConflictError("A category with this name already exists")
+
+    def create_category(self, values):
+        self._check_category_name(values["name"])
+        c = CategoryOut(**_stamp(values))
+        self.categories[c.id] = c
+        return c
+
+    def update_category(self, category_id, values):
+        c = self.categories.get(category_id)
+        if c is None:
+            return None
+        if "name" in values:
+            self._check_category_name(values["name"], ignore=c.id)
+        self.categories[category_id] = CategoryOut.model_validate(
+            c.model_copy(update={**values, "updated_at": _now()}).model_dump()
+        )
+        return self.categories[category_id]
+
+    def delete_service(self, service_id):
+        if service_id not in self.services:
+            return False
+        booked = self.bookings is not None and any(
+            r.get("service_id") == service_id for r in self.bookings.rows.values()
+        )
+        if booked:
+            raise ConflictError("This service has bookings, so it cannot be deleted.")
+        del self.services[service_id]
+        for pid in [p.id for p in self.packages.values() if p.service_id == service_id]:
+            del self.packages[pid]
+        for eid in [e.id for e in self.extras.values() if e.service_id == service_id]:
+            del self.extras[eid]
+        return True
 
     # services
     def list_services(self, *, vehicle_type=None, category=None, active_only=False):
@@ -276,3 +324,30 @@ class FakeAvailabilityRepository:
 
     def booked_counts(self, start, end):
         return {k: v for k, v in self.booked.items() if start <= k[0] <= end}
+
+
+class FakeImageStorage:
+    """Keeps uploaded pictures in memory under https://storage.test/..."""
+
+    PREFIX = "https://storage.test/service-images/"
+
+    def __init__(self) -> None:
+        self.files: dict[str, bytes] = {}
+        self.deleted: list[str] = []
+        self.fail = False
+
+    def owns(self, url):
+        return url.startswith(self.PREFIX)
+
+    def upload(self, kind, data, content_type, extension):
+        if self.fail:
+            from app.core.errors import ServiceUnavailableError
+
+            raise ServiceUnavailableError("Could not save the picture right now")
+        url = f"{self.PREFIX}{kind}/{uuid.uuid4().hex}.{extension}"
+        self.files[url] = data
+        return url
+
+    def delete(self, url):
+        self.deleted.append(url)
+        return self.files.pop(url, None) is not None

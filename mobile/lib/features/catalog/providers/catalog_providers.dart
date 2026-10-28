@@ -13,6 +13,17 @@ final browseServicesProvider = FutureProvider.autoDispose
       ref.watch(catalogRepositoryProvider).browse(vehicleType: type),
 );
 
+/// The active categories in the admin's order (drives the repair rail).
+final categoriesProvider = FutureProvider.autoDispose<List<ServiceCategory>>(
+  (ref) => ref.watch(catalogRepositoryProvider).browseCategories(),
+);
+
+/// Every category, switched off ones too (admin screens).
+final adminCategoriesProvider =
+    FutureProvider.autoDispose<List<ServiceCategory>>(
+  (ref) => ref.watch(catalogRepositoryProvider).adminCategories(),
+);
+
 final browseServiceProvider =
     FutureProvider.autoDispose.family<GarageService, String>(
   (ref, id) => ref.watch(catalogRepositoryProvider).browseOne(id),

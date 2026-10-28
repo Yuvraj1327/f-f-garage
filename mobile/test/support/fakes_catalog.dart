@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:ff_garage/core/media/image_picker_service.dart';
 import 'package:ff_garage/core/network/api_exception.dart';
 import 'package:ff_garage/data/models/availability.dart';
 import 'package:ff_garage/data/models/catalog.dart';
@@ -22,8 +25,20 @@ ServicePackage package({
   List<String> inclusions = const ['Wash', 'Oil top-up'],
   int? minutes = 90,
   List<ExtraCharge> charges = const [],
+  double? originalPrice,
+  double? advancePercent,
+  int? warrantyDays,
+  int? repeatIntervalDays,
+  List<String> includedParts = const [],
+  List<String> exclusions = const [],
 }) =>
     ServicePackage(
+      originalPrice: originalPrice,
+      advancePercent: advancePercent,
+      warrantyDays: warrantyDays,
+      repeatIntervalDays: repeatIntervalDays,
+      includedParts: includedParts,
+      exclusions: exclusions,
       id: id,
       serviceId: serviceId,
       name: name,
@@ -61,12 +76,30 @@ GarageService service({
   bool isActive = true,
   List<ServicePackage>? packages,
   List<ExtraCharge> charges = const [],
+  String? categoryId = 'cat-package',
+  String? shortDescription,
+  String? badge,
+  String? systemKey,
+  List<String> supportedMakes = const [],
+  List<String> supportedModels = const [],
+  List<String> partImageUrls = const [],
+  String? bannerUrl,
+  String? thumbnailUrl,
 }) =>
     GarageService(
       id: id,
       name: name,
       vehicleType: type,
       category: 'Maintenance',
+      categoryId: categoryId,
+      shortDescription: shortDescription,
+      badge: badge,
+      systemKey: systemKey,
+      supportedMakes: supportedMakes,
+      supportedModels: supportedModels,
+      partImageUrls: partImageUrls,
+      bannerUrl: bannerUrl,
+      thumbnailUrl: thumbnailUrl,
       description: 'Routine service',
       displayOrder: 0,
       isActive: isActive,
@@ -74,14 +107,59 @@ GarageService service({
       extraCharges: charges,
     );
 
+ServiceCategory category({
+  String id = 'cat-package',
+  String name = 'Service Packages',
+  CatalogTab tab = CatalogTab.package,
+  bool isActive = true,
+  int order = 20,
+  String? systemKey,
+}) =>
+    ServiceCategory(
+      id: id,
+      name: name,
+      tab: tab,
+      displayOrder: order,
+      isActive: isActive,
+      systemKey: systemKey,
+    );
+
 /// In-memory catalogue. Set [error] to make every call fail with it.
 class FakeCatalogRepository implements CatalogRepository {
-  FakeCatalogRepository(this.services);
+  FakeCatalogRepository(this.services, {List<ServiceCategory>? categories})
+      : categories = categories ??
+            [
+              category(
+                id: 'cat-mechanic',
+                name: 'Book a Mechanic',
+                tab: CatalogTab.mechanic,
+                order: 10,
+                systemKey: 'tab_mechanic',
+              ),
+              category(systemKey: 'tab_package'),
+              category(
+                id: 'cat-brakes',
+                name: 'Brakes',
+                tab: CatalogTab.repair,
+                order: 40,
+              ),
+            ];
 
   List<GarageService> services;
+  List<ServiceCategory> categories;
   ApiException? error;
   final List<String> calls = [];
   Map<String, dynamic>? lastChanges;
+
+  /// The fields of the last createService call, by API name.
+  Map<String, dynamic>? lastCreate;
+
+  /// The fields of the last createPackage call, by API name.
+  Map<String, dynamic>? lastPackage;
+
+  /// Pictures "uploaded", and the ones discarded again.
+  final List<String> uploads = [];
+  final List<String> discarded = [];
 
   void _check(String call) {
     calls.add(call);
@@ -104,6 +182,12 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
+  Future<List<ServiceCategory>> browseCategories() async {
+    _check('browseCategories');
+    return categories.where((c) => c.isActive).toList();
+  }
+
+  @override
   Future<List<GarageService>> adminList({VehicleType? vehicleType}) async {
     _check('adminList');
     return services
@@ -123,16 +207,47 @@ class FakeCatalogRepository implements CatalogRepository {
     required VehicleType vehicleType,
     required String category,
     String? description,
+    CatalogTab catalogTab = CatalogTab.package,
+    String? repairGroup,
+    String? imageUrl,
+    String? badge,
+    String? shortDescription,
+    String? categoryId,
+    String? bannerUrl,
+    String? thumbnailUrl,
+    List<String> partImageUrls = const [],
+    List<String> supportedMakes = const [],
+    List<String> supportedModels = const [],
     int displayOrder = 0,
     bool isActive = true,
   }) async {
     _check('createService:$name:${vehicleType.apiValue}:$category');
+    lastCreate = {
+      'description': description,
+      'short_description': shortDescription,
+      'category_id': categoryId,
+      'banner_url': bannerUrl,
+      'thumbnail_url': thumbnailUrl,
+      'part_image_urls': partImageUrls,
+      'supported_makes': supportedMakes,
+      'supported_models': supportedModels,
+      'badge': badge,
+      'is_active': isActive,
+    };
     final created = GarageService(
       id: 'new-${services.length}',
       name: name,
       vehicleType: vehicleType,
       category: category,
+      categoryId: categoryId,
       description: description,
+      shortDescription: shortDescription,
+      bannerUrl: bannerUrl,
+      thumbnailUrl: thumbnailUrl,
+      partImageUrls: partImageUrls,
+      supportedMakes: supportedMakes,
+      supportedModels: supportedModels,
+      badge: badge,
       displayOrder: displayOrder,
       isActive: isActive,
       packages: const [],
@@ -155,6 +270,8 @@ class FakeCatalogRepository implements CatalogRepository {
       name: (changes['name'] as String?) ?? old.name,
       vehicleType: old.vehicleType,
       category: (changes['category'] as String?) ?? old.category,
+      categoryId: old.categoryId,
+      systemKey: old.systemKey,
       description: changes.containsKey('description')
           ? changes['description'] as String?
           : old.description,
@@ -168,17 +285,131 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
+  Future<void> deleteService(String id) async {
+    _check('deleteService:$id');
+    services = services.where((s) => s.id != id).toList();
+  }
+
+  @override
+  Future<GarageService> duplicateService(String id) async {
+    _check('duplicateService:$id');
+    final old = services.firstWhere((s) => s.id == id);
+    final copy = GarageService(
+      id: 'copy-${services.length}',
+      name: '${old.name} (Copy)',
+      vehicleType: old.vehicleType,
+      category: old.category,
+      categoryId: old.categoryId,
+      displayOrder: old.displayOrder,
+      isActive: false,
+      packages: old.packages,
+      extraCharges: old.extraCharges,
+    );
+    services = [...services, copy];
+    return copy;
+  }
+
+  @override
+  Future<List<ServiceCategory>> adminCategories() async {
+    _check('adminCategories');
+    return categories;
+  }
+
+  @override
+  Future<ServiceCategory> createCategory({
+    required String name,
+    required CatalogTab tab,
+    String? iconKey,
+  }) async {
+    _check('createCategory:$name:${tab.apiValue}');
+    final created = category(
+      id: 'cat-new-${categories.length}',
+      name: name,
+      tab: tab,
+      order: categories.length * 10 + 10,
+    );
+    categories = [...categories, created];
+    return created;
+  }
+
+  @override
+  Future<ServiceCategory> updateCategory(
+    String id,
+    Map<String, dynamic> changes,
+  ) async {
+    _check('updateCategory:$id:${changes.keys.join(',')}');
+    lastChanges = changes;
+    final old = categories.firstWhere((c) => c.id == id);
+    final updated = ServiceCategory(
+      id: old.id,
+      name: (changes['name'] as String?) ?? old.name,
+      tab: old.tab,
+      displayOrder: old.displayOrder,
+      isActive: (changes['is_active'] as bool?) ?? old.isActive,
+      systemKey: old.systemKey,
+    );
+    categories = [for (final c in categories) c.id == id ? updated : c];
+    return updated;
+  }
+
+  @override
+  Future<List<ServiceCategory>> reorderCategories(List<String> ids) async {
+    _check('reorderCategories:${ids.join(',')}');
+    categories = [
+      for (final id in ids) categories.firstWhere((c) => c.id == id),
+    ];
+    return categories;
+  }
+
+  @override
+  Future<String> uploadImage(
+    ServiceImageKind kind,
+    Uint8List bytes,
+    String contentType,
+  ) async {
+    _check('uploadImage:${kind.name}:$contentType:${bytes.length}');
+    final url = 'https://cdn.test/${kind.name}-${uploads.length}.jpg';
+    uploads.add(url);
+    return url;
+  }
+
+  @override
+  Future<void> discardImage(String url) async {
+    calls.add('discardImage:$url');
+    discarded.add(url);
+  }
+
+  @override
   Future<ServicePackage> createPackage(
     String serviceId, {
     required String name,
     required double price,
     String? description,
     List<String> inclusions = const [],
+    List<String> exclusions = const [],
+    double? originalPrice,
+    int? warrantyDays,
+    double? advancePercent,
+    int? repeatIntervalDays,
+    double? labourCharge,
+    List<String> includedParts = const [],
+    PartsPolicy partsPolicy = PartsPolicy.serviceOnly,
+    String? partsNote,
     int? estimatedDurationMinutes,
     int displayOrder = 0,
     bool isActive = true,
   }) async {
     _check('createPackage:$name:$price:${inclusions.join('|')}:$estimatedDurationMinutes');
+    lastPackage = {
+      'original_price': originalPrice,
+      'advance_percent': advancePercent,
+      'labour_charge': labourCharge,
+      'repeat_interval_days': repeatIntervalDays,
+      'warranty_days': warrantyDays,
+      'included_parts': includedParts,
+      'exclusions': exclusions,
+      'parts_policy': partsPolicy.apiValue,
+    };
     final created = package(
       id: 'np-${calls.length}',
       serviceId: serviceId,
@@ -197,6 +428,7 @@ class FakeCatalogRepository implements CatalogRepository {
                 name: old.name,
                 vehicleType: old.vehicleType,
                 category: old.category,
+                categoryId: old.categoryId,
                 displayOrder: old.displayOrder,
                 isActive: old.isActive,
                 packages: [...old.packages, created],
@@ -462,3 +694,22 @@ const conflictServiceError = ApiException(
   message: 'A service with this name already exists',
   statusCode: 409,
 );
+
+
+/// A tiny but real JPEG header, enough for the type check.
+final Uint8List fakeJpeg = Uint8List.fromList([0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 4]);
+
+/// Hands back the queued pictures instead of opening the gallery or camera.
+class FakeImagePicker implements ImagePickerService {
+  /// What the next pick returns (null = the person backed out).
+  final List<PickedImage?> queue = [];
+  final List<PickSource> sources = [];
+  Object? failWith;
+
+  @override
+  Future<PickedImage?> pick(PickSource source) async {
+    sources.add(source);
+    if (failWith != null) throw failWith!;
+    return queue.isEmpty ? null : queue.removeAt(0);
+  }
+}

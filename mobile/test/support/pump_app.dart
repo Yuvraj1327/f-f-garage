@@ -1,6 +1,7 @@
 import 'package:ff_garage/app/app.dart';
 import 'package:ff_garage/app/router/app_router.dart';
 import 'package:ff_garage/core/config/app_config.dart';
+import 'package:ff_garage/core/media/image_picker_service.dart';
 import 'package:ff_garage/core/preferences/app_preferences.dart';
 import 'package:ff_garage/core/providers/core_providers.dart';
 import 'package:ff_garage/data/models/enums.dart';
@@ -41,10 +42,12 @@ class AppHarness {
     FakeLocationService? location,
     FakeGarageSettingsRepository? garage,
     FakeVehicleRepository? vehicles,
+    FakeImagePicker? imagePicker,
     MemoryPreferences? preferences,
     this.mapsEnabled = false,
     Duration? pollInterval,
-  })  : garage = garage ?? FakeGarageSettingsRepository(),
+  })  : imagePicker = imagePicker ?? FakeImagePicker(),
+        garage = garage ?? FakeGarageSettingsRepository(),
         vehicles = vehicles ?? FakeVehicleRepository(),
         preferences = preferences ?? MemoryPreferences(),
         maps = maps ?? FakeMapsRepository(),
@@ -81,6 +84,7 @@ class AppHarness {
   final FakeLocationService location;
   final FakeGarageSettingsRepository garage;
   final FakeVehicleRepository vehicles;
+  final FakeImagePicker imagePicker;
 
   /// The device's saved settings. Pass the same object to a second harness to
   /// mimic restarting the app.
@@ -118,6 +122,7 @@ class AppHarness {
             FakeProfileRepository(profileFor(role)),
           ),
           catalogRepositoryProvider.overrideWithValue(catalog),
+          imagePickerServiceProvider.overrideWithValue(imagePicker),
           serviceAreaRepositoryProvider.overrideWithValue(areas),
           availabilityRepositoryProvider.overrideWithValue(availability),
           bookingRepositoryProvider.overrideWithValue(bookingRepo),

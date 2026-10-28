@@ -47,6 +47,7 @@ from app.services.extra_request_service import ExtraRequestService
 from app.services.garage_settings_service import GarageSettingsService
 from app.services.geocoding_gateway import GeocodingGateway, GoogleGeocodingGateway
 from app.services.health_service import HealthService
+from app.services.image_storage import ImageStorage, SupabaseImageStorage
 from app.services.maps_service import MapsService, RateLimiter
 from app.services.notification_service import NotificationService
 from app.services.payment_gateway import PaymentGateway, RazorpayGateway
@@ -157,8 +158,18 @@ def get_availability_repository(settings: SettingsDep) -> AvailabilityRepository
 AvailabilityRepositoryDep = Annotated[AvailabilityRepository, Depends(get_availability_repository)]
 
 
-def get_catalog_service(catalog: CatalogRepositoryDep) -> CatalogService:
-    return CatalogService(catalog)
+def get_image_storage(settings: SettingsDep) -> ImageStorage | None:
+    """Service pictures live in Supabase Storage; None while Supabase is not configured."""
+    if not settings.supabase_configured:
+        return None
+    return SupabaseImageStorage(get_supabase_admin_client(settings), settings.supabase_url)
+
+
+ImageStorageDep = Annotated[ImageStorage | None, Depends(get_image_storage)]
+
+
+def get_catalog_service(catalog: CatalogRepositoryDep, storage: ImageStorageDep) -> CatalogService:
+    return CatalogService(catalog, storage)
 
 
 CatalogServiceDep = Annotated[CatalogService, Depends(get_catalog_service)]

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from pydantic import BaseModel
 
 
@@ -12,3 +14,5 @@ class SupportContactOut(BaseModel):
     hours: str
     # The refund policy the garage configured ("" = none: ask the garage).
     refund_policy: str = ""
+    # The default share of a booking collected up front (a package can set its own).
+    advance_percent: Decimal = Decimal("20")

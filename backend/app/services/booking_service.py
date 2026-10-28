@@ -58,6 +58,18 @@ from app.services.coupon_service import CouponService
 logger = logging.getLogger(__name__)
 
 _NOT_AVAILABLE = "This service is not available right now"
+
+
+def _check_compatible(service, make: str, model: str) -> None:
+    """A service can be limited to some makes and/or models (empty = every vehicle)."""
+    makes = {m.lower() for m in service.supported_makes}
+    models = {m.lower() for m in service.supported_models}
+    if (makes and make.strip().lower() not in makes) or (
+        models and model.strip().lower() not in models
+    ):
+        raise UnprocessableError(f"{service.name} is not available for {make} {model}")
+
+
 _CENT = Decimal("0.01")
 
 
@@ -169,7 +181,10 @@ class BookingService:
             package,
             applicable,
             set(request.extra_charge_ids),
-            self._settings.advance_payment_percent,
+            # A package can set its own advance share; otherwise the garage-wide default.
+            package.advance_percent
+            if package.advance_percent is not None
+            else self._settings.advance_payment_percent,
         )
         if request.coupon_code:
             if self._coupons is None or customer_id is None:
@@ -249,6 +264,7 @@ class BookingService:
                     f"This is a {priced.service.vehicle_type.value} service; "
                     f"choose one of your {priced.service.vehicle_type.value}s"
                 )
+            _check_compatible(priced.service, vehicle.make, vehicle.model)
         area = self._serviceable_area(payload.pincode)
         slot = self._availability.ensure_bookable(payload.scheduled_date, payload.time_slot_id)
 

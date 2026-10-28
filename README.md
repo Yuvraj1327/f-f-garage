@@ -556,6 +556,18 @@ Service areas, Availability and Garage details stay on the Admin Dashboard. Ther
 - Three bundled pictures (`assets/images/services/`: Book a Mechanic, Check My Vehicle, Mechanic Consultation) are matched by service name; each has a 1:1 crop for list cards and a 16:9 banner for the top of the service screen. An admin's own picture link wins over them; services with neither show a circular light-blue category icon (Engine, Brakes, Battery, Chain, Cables, Lights, Tyres, Filters, Lubricants, Electrical, other).
 - Add vehicle: searchable make and model lists (`lib/data/vehicle_catalog.dart`, bikes and scooters only). "Can't find ...? Enter manually" lets the customer type either. Make and model are stored as plain text through the existing `/vehicles` API; no migration and no external vehicle service is used, and the registration is **not** verified with the RTO.
 
+## Service management (admin)
+
+Everything customers see is loaded from the database, so admin changes show up without an app release.
+
+- **Run the migration** `supabase/migrations/20261029100000_service_management.sql` (safe to rerun). It adds managed categories, the new service/package columns, the 3 default services (Book a Mechanic, Check My Vehicle, Mechanic Consultation (Via Call)) for bikes and scooters (matched by name, never duplicated), and the `service-images` Storage bucket.
+- **Categories** (Admin > Services > categories icon): add, rename, hide, drag to reorder. Each belongs to a customer tab. Built-in categories keep their tab; hidden categories hide their services.
+- **Services**: the admin list uses the customer cards, plus Preview, Edit, Duplicate (copy starts switched off), a visibility switch and Delete. Services that were ever booked cannot be deleted (switch them off); the 3 built-in services cannot be deleted at all, but can be edited and switched off.
+- **Editor**: name, category, offer label, short and full description, price, original (crossed-out) price, advance %, labour, duration, warranty, repeat interval, included services / parts / not-included lists, parts policy, supported makes and models (empty = all), availability. Preview shows the unsaved service as customers will see it. A new service is created switched off, completed with its package, then switched on.
+- **Pictures**: banner (16:9), square thumbnail and up to 8 part pictures, from Gallery or Camera (JPG, PNG, WebP, up to 5 MB, checked on the phone and again on the server). Uploads go through the backend (`POST /admin/service-images`, raw body) into the public `service-images` bucket; pictures that are replaced, removed, abandoned or belong to a deleted service are cleaned up.
+- **Money**: prices and the advance are always worked out by the server from the stored package (a package's own `advance_percent`, else `ADVANCE_PAYMENT_PERCENT`, default 20%). The app only shows "Pay now / after service". Vehicles a service does not support are refused at booking.
+- **Device permissions** for the picker: iOS `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` in `Info.plist`; Android needs no extra permission for the gallery, and `image_picker` asks for the camera when used. Run `flutter pub get` after pulling (new dependency `image_picker`).
+
 ## Environment variables
 
 Backend: copy `backend/.env.example` to `backend/.env`.

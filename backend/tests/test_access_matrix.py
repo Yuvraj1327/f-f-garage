@@ -21,6 +21,7 @@ ANY_ROLE = {
     ("GET", "/api/v1/profiles/me"),
     ("GET", "/api/v1/catalog/services"),
     ("GET", "/api/v1/catalog/services/{service_id}"),
+    ("GET", "/api/v1/catalog/categories"),
     ("GET", "/api/v1/service-areas/check"),
     ("GET", "/api/v1/availability"),
     ("GET", "/api/v1/support/contact"),

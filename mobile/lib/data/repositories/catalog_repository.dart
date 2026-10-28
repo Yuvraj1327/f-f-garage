@@ -1,7 +1,12 @@
+import 'dart:typed_data';
+
 import '../../core/network/api_exception.dart';
 import '../models/catalog.dart';
 import '../models/enums.dart';
 import '../services/catalog_api_service.dart';
+
+/// Which slot a picture is for.
+enum ServiceImageKind { banner, thumbnail, part }
 
 /// Services, packages and extra charges. Throws [ApiException] only.
 ///
@@ -22,6 +27,9 @@ class CatalogRepository {
   Future<GarageService> browseOne(String id) async =>
       _parse(await _service.browseOne(id), GarageService.fromJson);
 
+  Future<List<ServiceCategory>> browseCategories() async =>
+      _parseAll(await _service.browseCategories(), ServiceCategory.fromJson);
+
   // ---- admins ----
   Future<List<GarageService>> adminList({VehicleType? vehicleType}) async {
     final rows = await _service.adminList(vehicleType: vehicleType?.apiValue);
@@ -40,6 +48,13 @@ class CatalogRepository {
     String? repairGroup,
     String? imageUrl,
     String? badge,
+    String? shortDescription,
+    String? categoryId,
+    String? bannerUrl,
+    String? thumbnailUrl,
+    List<String> partImageUrls = const [],
+    List<String> supportedMakes = const [],
+    List<String> supportedModels = const [],
     int displayOrder = 0,
     bool isActive = true,
   }) async {
@@ -48,9 +63,16 @@ class CatalogRepository {
       'vehicle_type': vehicleType.apiValue,
       'category': category,
       'description': description,
+      'short_description': shortDescription,
+      if (categoryId != null) 'category_id': categoryId,
       'catalog_tab': catalogTab.apiValue,
       'repair_group': repairGroup,
       'image_url': imageUrl,
+      'banner_url': bannerUrl,
+      'thumbnail_url': thumbnailUrl,
+      'part_image_urls': partImageUrls,
+      'supported_makes': supportedMakes,
+      'supported_models': supportedModels,
       'badge': badge,
       'display_order': displayOrder,
       'is_active': isActive,
@@ -64,6 +86,64 @@ class CatalogRepository {
   ) async =>
       _parse(await _service.updateService(id, changes), GarageService.fromJson);
 
+  /// Only for a service that was never booked (the server refuses otherwise).
+  Future<void> deleteService(String id) => _service.deleteService(id);
+
+  /// A switched-off copy with its packages and extra charges.
+  Future<GarageService> duplicateService(String id) async =>
+      _parse(await _service.duplicateService(id), GarageService.fromJson);
+
+  Future<List<ServiceCategory>> adminCategories() async =>
+      _parseAll(await _service.adminCategories(), ServiceCategory.fromJson);
+
+  Future<ServiceCategory> createCategory({
+    required String name,
+    required CatalogTab tab,
+    String? iconKey,
+  }) async =>
+      _parse(
+        await _service.createCategory({
+          'name': name,
+          'tab': tab.apiValue,
+          if (iconKey != null) 'icon_key': iconKey,
+        }),
+        ServiceCategory.fromJson,
+      );
+
+  Future<ServiceCategory> updateCategory(
+    String id,
+    Map<String, dynamic> changes,
+  ) async =>
+      _parse(
+        await _service.updateCategory(id, changes),
+        ServiceCategory.fromJson,
+      );
+
+  /// [ids] is every category, in the order they should appear.
+  Future<List<ServiceCategory>> reorderCategories(List<String> ids) async =>
+      _parseAll(await _service.reorderCategories(ids), ServiceCategory.fromJson);
+
+  /// Uploads a picture and returns its link, to save on the service.
+  Future<String> uploadImage(
+    ServiceImageKind kind,
+    Uint8List bytes,
+    String contentType,
+  ) async {
+    final json = await _service.uploadImage(kind.name, bytes, contentType);
+    final url = json['url'];
+    if (url is! String || !url.startsWith('https://')) {
+      throw ApiException.invalidResponse();
+    }
+    return url;
+  }
+
+  /// Best effort: a picture left on the server is harmless, so this never throws.
+  Future<void> discardImage(String url) async {
+    try {
+      await _service.discardImage(url);
+    } catch (_) {}
+  }
+
   Future<ServicePackage> createPackage(
     String serviceId, {
     required String name,
@@ -73,6 +153,10 @@ class CatalogRepository {
     List<String> exclusions = const [],
     double? originalPrice,
     int? warrantyDays,
+    double? advancePercent,
+    int? repeatIntervalDays,
+    double? labourCharge,
+    List<String> includedParts = const [],
     PartsPolicy partsPolicy = PartsPolicy.serviceOnly,
     String? partsNote,
     int? estimatedDurationMinutes,
@@ -80,6 +164,10 @@ class CatalogRepository {
     bool isActive = true,
   }) async {
     final json = await _service.createPackage(serviceId, {
+      'advance_percent': advancePercent?.toStringAsFixed(2),
+      'repeat_interval_days': repeatIntervalDays,
+      'labour_charge': labourCharge?.toStringAsFixed(2),
+      'included_parts': includedParts,
       'name': name,
       'price': price.toStringAsFixed(2),
       'original_price': originalPrice?.toStringAsFixed(2),

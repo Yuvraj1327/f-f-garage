@@ -62,22 +62,36 @@ void main() {
     expect(find.text('Unable to reach the server.'), findsOneWidget);
   });
 
-  testWidgets('creating a service validates then saves', (tester) async {
+  testWidgets('creating a service validates, saves it with its package, then publishes',
+      (tester) async {
     final harness = await _openServices(tester);
     await tapText(tester, 'Add service');
 
-    await tapText(tester, 'Save');
+    await tapText(tester, 'Publish service');
     expect(find.text('Enter the service name'), findsOneWidget);
     expect(harness.catalog.calls.where((c) => c.startsWith('createService')), isEmpty);
 
     await enter(tester, 'Service name', 'Brake Service');
     await tapText(tester, 'Bike');
-    await tapText(tester, 'Save');
+    await tapText(tester, 'Publish service');
+    expect(find.text('Enter the price'), findsOneWidget, reason: 'price is required');
+
+    await enter(tester, 'Price', '499');
+    await tapText(tester, 'Publish service');
 
     expect(
       harness.catalog.calls,
-      contains('createService:Brake Service:bike:General'),
+      contains('createService:Brake Service:bike:Service Packages'),
     );
+    // Created switched off, completed with its package, then switched on.
+    expect(harness.catalog.lastCreate!['is_active'], false);
+    expect(harness.catalog.lastCreate!['category_id'], 'cat-package');
+    expect(
+      harness.catalog.calls.indexWhere((c) => c.startsWith('createPackage')),
+      greaterThan(harness.catalog.calls.indexWhere((c) => c.startsWith('createService'))),
+    );
+    expect(harness.catalog.calls.last, startsWith('updateService:new-'));
+    expect(harness.catalog.lastChanges, {'is_active': true});
     // Lands on the new service's page.
     expect(find.text('Brake Service'), findsWidgets);
     expect(find.text('Packages'), findsOneWidget);
@@ -88,8 +102,9 @@ void main() {
     final harness = await _openServices(tester);
     await tapText(tester, 'Add service');
     await enter(tester, 'Service name', 'General Service');
+    await enter(tester, 'Price', '499');
     harness.catalog.error = conflictServiceError;
-    await tapText(tester, 'Save');
+    await tapText(tester, 'Publish service');
 
     expect(find.text('A service with this name already exists'), findsOneWidget);
     expect(find.text('New service'), findsOneWidget, reason: 'stays on the form');
@@ -104,9 +119,14 @@ void main() {
     // Vehicle type cannot be changed once the service exists.
     expect(find.text('Cannot be changed after creation'), findsOneWidget);
     await enter(tester, 'Service name', 'Full Service');
-    await tapText(tester, 'Save');
+    await tapText(tester, 'Save changes');
 
     expect(harness.catalog.lastChanges, {'name': 'Full Service'});
+    expect(
+      harness.catalog.calls.where((c) => c.startsWith('updatePackage')),
+      isEmpty,
+      reason: 'the package was not touched',
+    );
   });
 
   testWidgets('package form validates the price and parses inclusions',

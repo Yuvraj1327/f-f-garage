@@ -11,7 +11,7 @@ from app.api.auth import CurrentUserDep
 from app.api.deps import AvailabilityServiceDep, CatalogServiceDep, ServiceAreaServiceDep
 from app.domain.enums import VehicleType
 from app.schemas.availability import DayAvailability
-from app.schemas.catalog import ServiceDetail
+from app.schemas.catalog import CategoryOut, ServiceDetail
 from app.schemas.service_area import PincodeCheck
 
 router = APIRouter(tags=["Catalog"])
@@ -33,6 +33,16 @@ def browse_services(
 ) -> list[ServiceDetail]:
     """Active services with their active packages and the extra charges that may apply."""
     return service.list_active(vehicle_type, category)
+
+
+@router.get(
+    "/catalog/categories",
+    response_model=list[CategoryOut],
+    summary="Active service categories, in display order",
+    responses=_AUTH,
+)
+def browse_categories(_user: CurrentUserDep, service: CatalogServiceDep) -> list[CategoryOut]:
+    return service.list_categories(active_only=True)
 
 
 @router.get(

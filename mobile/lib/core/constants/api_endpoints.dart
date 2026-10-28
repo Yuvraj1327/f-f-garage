@@ -8,6 +8,7 @@ abstract final class ApiEndpoints {
   // Customer-facing catalogue
   static const String catalogServices = '/catalog/services';
   static String catalogService(String id) => '/catalog/services/$id';
+  static const String catalogCategories = '/catalog/categories';
   static const String pincodeCheck = '/service-areas/check';
   static const String availability = '/availability';
 
@@ -20,6 +21,12 @@ abstract final class ApiEndpoints {
   static String adminServiceCharges(String serviceId) =>
       '/admin/services/$serviceId/extra-charges';
   static String adminCharge(String id) => '/admin/extra-charges/$id';
+  static String adminServiceDuplicate(String id) =>
+      '/admin/services/$id/duplicate';
+  static const String adminCategories = '/admin/categories';
+  static String adminCategory(String id) => '/admin/categories/$id';
+  static const String adminCategoryOrder = '/admin/categories/order';
+  static const String adminServiceImages = '/admin/service-images';
 
   // Admin: service areas
   static const String adminAreas = '/admin/service-areas';

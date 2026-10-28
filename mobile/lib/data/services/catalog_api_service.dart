@@ -73,4 +73,55 @@ class CatalogApiService {
   Future<void> deleteCharge(String id) async {
     await _client.delete(ApiEndpoints.adminCharge(id));
   }
+
+  Future<List<Map<String, dynamic>>> browseCategories() async =>
+      asJsonObjectList(await _client.get(ApiEndpoints.catalogCategories));
+
+  Future<void> deleteService(String id) async {
+    await _client.delete(ApiEndpoints.adminService(id));
+  }
+
+  Future<Map<String, dynamic>> duplicateService(String id) async =>
+      asJsonObject(await _client.post(ApiEndpoints.adminServiceDuplicate(id)));
+
+  Future<List<Map<String, dynamic>>> adminCategories() async =>
+      asJsonObjectList(await _client.get(ApiEndpoints.adminCategories));
+
+  Future<Map<String, dynamic>> createCategory(Map<String, dynamic> body) async =>
+      asJsonObject(await _client.post(ApiEndpoints.adminCategories, data: body));
+
+  Future<Map<String, dynamic>> updateCategory(
+    String id,
+    Map<String, dynamic> body,
+  ) async =>
+      asJsonObject(
+        await _client.patch(ApiEndpoints.adminCategory(id), data: body),
+      );
+
+  Future<List<Map<String, dynamic>>> reorderCategories(List<String> ids) async =>
+      asJsonObjectList(
+        await _client.put(ApiEndpoints.adminCategoryOrder, data: {'ids': ids}),
+      );
+
+  Future<Map<String, dynamic>> uploadImage(
+    String kind,
+    List<int> bytes,
+    String contentType,
+  ) async =>
+      asJsonObject(
+        await _client.postBytes(
+          ApiEndpoints.adminServiceImages,
+          bytes,
+          contentType: contentType,
+          queryParameters: {'kind': kind},
+        ),
+      );
+
+  /// Removes a picture that was uploaded but never saved on a service.
+  Future<void> discardImage(String url) async {
+    await _client.delete(
+      ApiEndpoints.adminServiceImages,
+      queryParameters: {'url': url},
+    );
+  }
 }

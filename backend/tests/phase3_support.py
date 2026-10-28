@@ -16,6 +16,7 @@ from app.api.deps import (
     get_coupon_repository,
     get_extra_request_repository,
     get_garage_settings_repository,
+    get_image_storage,
     get_notification_repository,
     get_payment_gateway,
     get_payment_repository,
@@ -38,6 +39,7 @@ from tests.fakes_booking import FakeBookingRepository
 from tests.fakes_catalog import (
     FakeAvailabilityRepository,
     FakeCatalogRepository,
+    FakeImageStorage,
     FakeServiceAreaRepository,
 )
 from tests.fakes_garage import FakeGarageSettings
@@ -68,9 +70,11 @@ class Ctx:
         self.driver = make_profile(UserRole.DRIVER)
         self.profiles = FakeProfileRepository(self.admin, self.customer, self.driver)
         self.catalog = FakeCatalogRepository()
+        self.storage = FakeImageStorage()
         self.areas = FakeServiceAreaRepository()
         self.availability = FakeAvailabilityRepository()
         self.bookings = FakeBookingRepository(self.availability)
+        self.catalog.bookings = self.bookings
         self.payments = FakePaymentRepository(self.bookings)
         self.gateway = FakeGateway()
         self.coupons = FakeCoupons()
@@ -87,6 +91,7 @@ class Ctx:
         app = create_app(self.settings)
         app.dependency_overrides[get_profile_repository] = lambda: self.profiles
         app.dependency_overrides[get_catalog_repository] = lambda: self.catalog
+        app.dependency_overrides[get_image_storage] = lambda: self.storage
         app.dependency_overrides[get_garage_settings_repository] = lambda: self.garage
         app.dependency_overrides[get_vehicle_repository] = lambda: self.vehicles
         app.dependency_overrides[get_service_area_repository] = lambda: self.areas

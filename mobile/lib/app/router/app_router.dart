@@ -8,7 +8,9 @@ import '../../features/admin/coupons/admin_coupons_screen.dart';
 import '../../features/admin/availability/admin_availability_screen.dart';
 import '../../features/admin/bookings/admin_booking_detail_screen.dart';
 import '../../features/admin/bookings/admin_bookings_screen.dart';
+import '../../features/admin/catalog/admin_categories_screen.dart';
 import '../../features/admin/catalog/admin_service_detail_screen.dart';
+import '../../features/admin/catalog/admin_service_preview_screen.dart';
 import '../../features/admin/catalog/admin_services_screen.dart';
 import '../../features/admin/catalog/charge_form_screen.dart';
 import '../../features/admin/catalog/package_form_screen.dart';
@@ -235,12 +237,24 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const ServiceFormScreen(),
               ),
               GoRoute(
+                path: 'categories',
+                name: 'admin-categories',
+                builder: (context, state) => const AdminCategoriesScreen(),
+              ),
+              GoRoute(
                 path: ':id',
                 name: 'admin-service',
                 builder: (context, state) => AdminServiceDetailScreen(
                   serviceId: state.pathParameters['id']!,
                 ),
                 routes: [
+                  GoRoute(
+                    path: 'preview',
+                    name: 'admin-service-preview',
+                    builder: (context, state) => AdminServicePreviewScreen(
+                      serviceId: state.pathParameters['id']!,
+                    ),
+                  ),
                   GoRoute(
                     path: 'edit',
                     name: 'admin-service-edit',

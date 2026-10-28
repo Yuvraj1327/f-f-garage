@@ -139,6 +139,7 @@ class _CatalogTabViewState extends ConsumerState<_CatalogTabView>
       s.name.toLowerCase().contains(query) ||
       s.category.toLowerCase().contains(query) ||
       (s.repairGroup ?? '').toLowerCase().contains(query) ||
+      (s.shortDescription ?? '').toLowerCase().contains(query) ||
       (s.description ?? '').toLowerCase().contains(query);
 
   @override
@@ -168,11 +169,13 @@ class _CatalogTabViewState extends ConsumerState<_CatalogTabView>
     }
     final isRepair = widget.tab == CatalogTab.repair;
     final groups = isRepair
-        ? ({
-            for (final s in inTab)
-              if (s.repairGroup != null) s.repairGroup!,
-          }.toList()
-          ..sort())
+        ? _orderedGroups(
+            {
+              for (final s in inTab)
+                if (s.repairGroup != null) s.repairGroup!,
+            },
+            ref.watch(categoriesProvider).valueOrNull ?? const [],
+          )
         : const <String>[];
     final selected = groups.contains(_group) ? _group : null;
     final shown = [
@@ -211,6 +214,20 @@ class _CatalogTabViewState extends ConsumerState<_CatalogTabView>
       ],
     );
   }
+}
+
+/// Repair groups in the admin's category order; unknown ones go last, A-Z.
+List<String> _orderedGroups(Set<String> names, List<ServiceCategory> ordered) {
+  final rank = {
+    for (var i = 0; i < ordered.length; i++) ordered[i].name.toLowerCase(): i,
+  };
+  final list = names.toList();
+  list.sort((a, b) {
+    final ra = rank[a.toLowerCase()] ?? 100000;
+    final rb = rank[b.toLowerCase()] ?? 100000;
+    return ra != rb ? ra.compareTo(rb) : a.compareTo(b);
+  });
+  return list;
 }
 
 /// The left rail of repair categories (Brakes, Cables, Battery ...).

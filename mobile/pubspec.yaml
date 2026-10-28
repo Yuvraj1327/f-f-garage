@@ -33,6 +33,8 @@ dependencies:
   geolocator: ^13.0.2
   # Remembers that the first-run onboarding was seen.
   shared_preferences: ^2.3.2
+  # Gallery / camera pictures for the admin service editor.
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

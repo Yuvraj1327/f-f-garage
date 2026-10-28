@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.auth import CurrentUserDep
-from app.api.deps import GarageSettingsServiceDep
+from app.api.deps import GarageSettingsServiceDep, SettingsDep
 from app.schemas.support import SupportContactOut
 
 router = APIRouter(prefix="/support", tags=["Support"])
@@ -25,7 +25,9 @@ def _digits_plus(raw: str) -> str:
         403: {"description": "Account disabled"},
     },
 )
-def read_contact(user: CurrentUserDep, garage: GarageSettingsServiceDep) -> SupportContactOut:
+def read_contact(
+    user: CurrentUserDep, garage: GarageSettingsServiceDep, settings: SettingsDep
+) -> SupportContactOut:
     """The details an admin saved in the app, or (until they do) the ones configured
     through environment variables. Fields that are not set come back as empty strings."""
     current = garage.current()
@@ -37,4 +39,5 @@ def read_contact(user: CurrentUserDep, garage: GarageSettingsServiceDep) -> Supp
         address=current.address,
         hours=current.hours,
         refund_policy=current.refund_policy,
+        advance_percent=settings.advance_payment_percent,
     )

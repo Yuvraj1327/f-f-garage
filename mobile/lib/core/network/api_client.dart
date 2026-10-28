@@ -95,13 +95,40 @@ class ApiClient {
   Future<dynamic> post(String path, {Object? data}) =>
       _send('POST', path, data: data);
 
+  /// Sends [bytes] as the whole request body (a picture upload).
+  Future<dynamic> postBytes(
+    String path,
+    List<int> bytes, {
+    required String contentType,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    try {
+      final response = await _dio.request<dynamic>(
+        path,
+        data: Stream<List<int>>.fromIterable([bytes]),
+        queryParameters: queryParameters,
+        options: Options(
+          method: 'POST',
+          contentType: contentType,
+          headers: {Headers.contentLengthHeader: bytes.length},
+          // Pictures are up to 5 MB: give a slow mobile connection time.
+          sendTimeout: const Duration(seconds: 60),
+        ),
+      );
+      return response.data;
+    } on DioException catch (error) {
+      throw ApiException.fromDioException(error);
+    }
+  }
+
   Future<dynamic> put(String path, {Object? data}) =>
       _send('PUT', path, data: data);
 
   Future<dynamic> patch(String path, {Object? data}) =>
       _send('PATCH', path, data: data);
 
-  Future<dynamic> delete(String path) => _send('DELETE', path);
+  Future<dynamic> delete(String path, {Map<String, dynamic>? queryParameters}) =>
+      _send('DELETE', path, queryParameters: queryParameters);
 
   Future<dynamic> _send(
     String method,

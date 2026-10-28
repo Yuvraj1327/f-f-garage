@@ -7,6 +7,7 @@ import '../../../data/models/driver.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/service_area.dart';
 import '../../../data/providers/data_providers.dart';
+import '../../catalog/providers/catalog_providers.dart';
 
 /// Every service, including inactive ones, for the admin lists.
 final adminServicesProvider = FutureProvider.autoDispose
@@ -46,6 +47,9 @@ final adminExceptionsProvider =
 void refreshCatalog(WidgetRef ref) {
   ref.invalidate(adminServicesProvider);
   ref.invalidate(adminServiceProvider);
+  // What customers see changes with it.
+  ref.invalidate(browseServicesProvider);
+  ref.invalidate(browseServiceProvider);
 }
 
 /// Every driver account, with how many open bookings each has.

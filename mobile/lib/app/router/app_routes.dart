@@ -71,6 +71,8 @@ abstract final class AppRoutes {
   static const String adminServiceNew = '/admin/services/new';
   static String adminService(String id) => '/admin/services/$id';
   static String adminServiceEdit(String id) => '/admin/services/$id/edit';
+  static String adminServicePreview(String id) => '/admin/services/$id/preview';
+  static const String adminCategories = '/admin/services/categories';
   static String adminPackage(String serviceId, String packageId) =>
       '/admin/services/$serviceId/packages/$packageId';
   static String adminCharge(String serviceId, String chargeId) =>
