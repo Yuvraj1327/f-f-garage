@@ -31,6 +31,16 @@
 
   <title>ff_garage</title>
   <link rel="manifest" href="manifest.json">
+  <!-- Google Maps: the key is read from maps_config.js (git-ignored, written by
+       tool/configure_platforms.py). The script is loaded here, before Flutter
+       starts, because the map plugin expects window.google.maps to exist. -->
+  <script src="maps_config.js"></script>
+  <script>
+    if (window.GOOGLE_MAPS_KEY_WEB) {
+      document.write('<script src="https://maps.googleapis.com/maps/api/js?key=' +
+        encodeURIComponent(window.GOOGLE_MAPS_KEY_WEB) + '"><\/script>');
+    }
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

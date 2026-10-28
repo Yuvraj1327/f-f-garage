@@ -30,6 +30,12 @@ AuthFailure mapAuthError({
       text.contains('already been registered')) {
     return AuthFailure.emailAlreadyRegistered;
   }
+  if (errorCode == 'email_address_invalid') {
+    return AuthFailure.invalidEmail;
+  }
+  if (errorCode == 'signup_disabled') {
+    return AuthFailure.signupDisabled;
+  }
   if (errorCode == 'weak_password' ||
       text.contains('password should be') ||
       text.contains('weak password')) {

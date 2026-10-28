@@ -9,6 +9,10 @@ abstract final class BrandAssets {
   static const String bike = 'assets/images/bike.jpg';
   static const String homeBanner = 'assets/images/home_banner.jpg';
   static const String onboardingHero = 'assets/images/onboarding_hero.jpg';
+
+  /// Home promo sections: a mechanic servicing a motorcycle / a scooter.
+  static const String promoBike = 'assets/images/promo_bike_service.jpg';
+  static const String promoScooter = 'assets/images/promo_scooter_service.jpg';
 }
 
 /// The F&F Two Wheeler Garage logo, shown whole (never stretched or cropped) in

@@ -80,6 +80,15 @@ class _GoogleMapViewState extends State<GoogleMapView>
       markers: {
         if (marker != null)
           Marker(markerId: const MarkerId('pin'), position: _latLng(marker)),
+        if (spec.myLocation case final here?)
+          Marker(
+            markerId: const MarkerId('me'),
+            position: _latLng(here),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueAzure,
+            ),
+            zIndexInt: 1,
+          ),
       },
       // Previews are pictures: no gestures, no controls. (Android's lite mode
       // renders a static image, which is cheaper in a scrolling list.)

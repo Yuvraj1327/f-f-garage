@@ -7,7 +7,6 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/async_view.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/enums.dart';
-import '../../../data/models/vehicle.dart';
 import '../../../data/providers/data_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../../auth/presentation/widgets/auth_widgets.dart' show MessageBanner;

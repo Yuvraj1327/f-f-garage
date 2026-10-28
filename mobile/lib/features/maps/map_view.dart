@@ -11,6 +11,7 @@ class MapViewSpec {
     this.zoom = 16,
     this.interactive = true,
     this.marker,
+    this.myLocation,
     this.onCenterChanged,
     this.onCreated,
   });
@@ -25,6 +26,9 @@ class MapViewSpec {
   /// A pin drawn on the map (previews). The picker uses a fixed centre pin
   /// drawn by the screen instead.
   final MapPoint? marker;
+
+  /// The device's own position, drawn as a blue marker apart from the pin.
+  final MapPoint? myLocation;
 
   /// Called when the camera stops moving, with the point under the centre.
   final ValueChanged<MapPoint>? onCenterChanged;

@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/booking_journey.dart';
+import '../support/fakes.dart';
 import '../support/fakes_driver.dart';
 import '../support/fakes_garage.dart';
 import '../support/pump_app.dart';

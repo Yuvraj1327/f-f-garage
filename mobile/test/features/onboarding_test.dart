@@ -18,7 +18,12 @@ class _MemoryStore implements OnboardingStore {
   Future<void> markSeen() async => saved += 1;
 }
 
-Widget _app({required bool seen, OnboardingStore? store}) => ProviderScope(
+Widget _app({
+  required bool seen,
+  OnboardingStore? store,
+  FakeAuthGateway? gateway,
+}) =>
+    ProviderScope(
       overrides: [
         appConfigProvider.overrideWithValue(
           const AppConfig(
@@ -27,7 +32,7 @@ Widget _app({required bool seen, OnboardingStore? store}) => ProviderScope(
             supabaseAnonKey: 'anon',
           ),
         ),
-        authGatewayProvider.overrideWithValue(FakeAuthGateway()),
+        authGatewayProvider.overrideWithValue(gateway ?? FakeAuthGateway()),
         profileRepositoryProvider.overrideWithValue(
           FakeProfileRepository(profileFor(UserRole.customer)),
         ),
@@ -59,18 +64,36 @@ void main() {
     expect(find.text('Welcome back'), findsNothing);
   });
 
-  testWidgets('the logo and hero are shown whole, not cropped', (tester) async {
+  testWidgets('the picture fills the screen and the logo is shown whole',
+      (tester) async {
     _tall(tester);
     await tester.pumpWidget(_app(seen: false));
     await tester.pumpAndSettle();
 
     final hero = tester.widget<Image>(_key('onboarding-hero'));
-    expect(hero.fit, BoxFit.contain);
+    expect(hero.fit, BoxFit.cover);
     expect((hero.image as AssetImage).assetName, BrandAssets.onboardingHero);
+    expect(tester.getSize(_key('onboarding-hero')), const Size(800, 1600));
     final logo = tester.widget<Image>(
       find.descendant(of: find.byType(BrandLogo), matching: find.byType(Image)),
     );
     expect(logo.fit, BoxFit.contain);
+  });
+
+  testWidgets('Continue with Google signs in and is remembered',
+      (tester) async {
+    _tall(tester);
+    final store = _MemoryStore();
+    final gateway = FakeAuthGateway();
+    await tester.pumpWidget(_app(seen: false, store: store, gateway: gateway));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Continue with Google'), findsOneWidget);
+    await tester.tap(_key('onboarding-google'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.googleCalls, 1);
+    expect(store.saved, 1);
   });
 
   testWidgets('swiping shows the other messages and moves the indicator',

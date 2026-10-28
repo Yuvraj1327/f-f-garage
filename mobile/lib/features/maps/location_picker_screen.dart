@@ -166,6 +166,8 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
     _map?.animateTo(place.point, zoom: 17);
   }
 
+  MapPoint? _myLocation;
+
   Future<void> _locate() async {
     if (_locating) {
       return;
@@ -189,6 +191,7 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
           _locating = false;
           _center = point;
           _hasPoint = true;
+          _myLocation = point;
           _results = const [];
           _skipNextIdle = true;
         });
@@ -221,6 +224,7 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
             MapViewSpec(
               center: _center,
               zoom: _hasPoint ? 17 : 5,
+              myLocation: _myLocation,
               onCenterChanged: _onCenterChanged,
               onCreated: (controller) => _map = controller,
             ),

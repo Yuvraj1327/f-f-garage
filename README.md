@@ -514,6 +514,12 @@ The Phase 8 `url_launcher` query entries (above, in "UI polish and support") are
 
 **Home location.** On a customer's first visit a card explains why location helps and offers **Allow location** or **Not now**; the system permission is requested only after "Allow location", once. On a grant the app reads the position, asks the backend (`/maps/reverse`) for the address and whether the PIN code is serviceable, and shows a map preview with a pin, the address and a **Change** button (which opens the full map where the pin can be moved). "Not now" or a refusal is remembered and never followed by another prompt; the customer can pick a place on the map, enter a PIN code in the existing check, or tap "Use my location" later. The Home screen also has a search bar (opens the service list with the text), the mechanic banner, service categories and popular services.
 
+## Home promo sections and the full-screen welcome
+
+- **Home** (customer) is one scrolling page: location card, search, vehicle, hero banner, shortcuts, service-area check, categories, popular services, then two promo cards: **Why Choose F&F Garage?** (motorcycle mechanic picture, the four benefits and a Book button) and **Reliable scooter servicing** (scooter picture, short checklist). The bottom navbar stays put. Code: `features/home/presentation/home_promo_sections.dart`.
+- Pictures: `assets/images/promo_bike_service.jpg` and `promo_scooter_service.jpg` (16:9, shown without cropping). The whole `assets/images/` folder is registered in `pubspec.yaml`, so new files there need no extra entry.
+- **Welcome (onboarding)** is full-screen: `onboarding_hero.jpg` as the background with a navy gradient, the logo and Skip on top, and the headline, dots, Get Started, Continue with Google and Login at the bottom. Google sign-in uses the same `AuthController.signInWithGoogle` as the login screen.
+
 ## Navigation, settings and themes
 
 **Bottom navigation (by role).** One bar, built from `mobile/lib/core/widgets/app_nav.dart`; each role only ever receives its own items, and the router keeps each role inside its own area:

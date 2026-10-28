@@ -43,9 +43,9 @@ class AppConfig {
       googleClientIdWeb: _publicValue(read('GOOGLE_CLIENT_ID_WEB')),
       googleClientIdAndroid: _publicValue(read('GOOGLE_CLIENT_ID_ANDROID')),
       googleClientIdIos: _publicValue(read('GOOGLE_CLIENT_ID_IOS')),
-      mapsKeyWeb: _publicValue(read('GOOGLE_MAPS_KEY_WEB')),
-      mapsKeyAndroid: _publicValue(read('GOOGLE_MAPS_KEY_ANDROID')),
-      mapsKeyIos: _publicValue(read('GOOGLE_MAPS_KEY_IOS')),
+      mapsKeyWeb: _publicValue(read('GOOGLE_MAPS_WEB_API_KEY', read('GOOGLE_MAPS_KEY_WEB'))),
+      mapsKeyAndroid: _publicValue(read('GOOGLE_MAPS_ANDROID_API_KEY', read('GOOGLE_MAPS_KEY_ANDROID'))),
+      mapsKeyIos: _publicValue(read('GOOGLE_MAPS_IOS_API_KEY', read('GOOGLE_MAPS_KEY_IOS'))),
       forbiddenKeys: forbiddenKeyNames(env.keys),
     );
   }

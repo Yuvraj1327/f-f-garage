@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 
 import '../../../data/models/driver_job.dart';
 import '../../../data/models/enums.dart';

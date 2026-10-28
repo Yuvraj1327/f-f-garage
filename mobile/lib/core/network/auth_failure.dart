@@ -10,6 +10,8 @@ enum AuthFailureType {
   network,
   wrongAccountType,
   accountDisabled,
+  invalidEmail,
+  signupDisabled,
   sessionExpired,
   notConfigured,
   googleNotConfigured,
@@ -39,6 +41,14 @@ class AuthFailure implements Exception {
   static const AuthFailure emailAlreadyRegistered = AuthFailure(
     AuthFailureType.emailAlreadyRegistered,
     'An account with this email already exists. Try signing in instead.',
+  );
+  static const AuthFailure invalidEmail = AuthFailure(
+    AuthFailureType.invalidEmail,
+    'That email address does not look right. Check it and try again.',
+  );
+  static const AuthFailure signupDisabled = AuthFailure(
+    AuthFailureType.signupDisabled,
+    'New sign-ups are switched off right now. Please try again later.',
   );
   static const AuthFailure weakPassword = AuthFailure(
     AuthFailureType.weakPassword,

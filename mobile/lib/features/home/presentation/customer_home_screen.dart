@@ -14,6 +14,7 @@ import '../../auth/providers/auth_controller.dart';
 import '../../catalog/presentation/pincode_check_card.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import 'home_location_card.dart';
+import 'home_promo_sections.dart';
 import '../../catalog/providers/catalog_providers.dart';
 import '../../notifications/presentation/notification_bell.dart';
 
@@ -120,6 +121,11 @@ class CustomerHomeScreen extends ConsumerWidget {
                 for (final service in services.take(3))
                   _PopularTile(service: service),
               ],
+              const SizedBox(height: 16),
+              const WhyChooseSection(),
+              const SizedBox(height: 16),
+              const ScooterServiceSection(),
+              const SizedBox(height: 16),
             ],
           ),
         ),

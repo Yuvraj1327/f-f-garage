@@ -46,6 +46,11 @@ def read_env(path: Path) -> dict[str, str]:
     return values
 
 
+def maps_key_for(env: dict[str, str], platform: str) -> str:
+    """GOOGLE_MAPS_<PLATFORM>_API_KEY, or the older GOOGLE_MAPS_KEY_<PLATFORM> name."""
+    return env.get(f"GOOGLE_MAPS_{platform}_API_KEY") or env.get(f"GOOGLE_MAPS_KEY_{platform}", "")
+
+
 def reversed_client_id(client_id: str) -> str:
     """'123-abc.apps.googleusercontent.com' -> 'com.googleusercontent.apps.123-abc'."""
     suffix = ".apps.googleusercontent.com"
@@ -109,7 +114,7 @@ ANDROID_PERMISSIONS = (
 KTS_BLOCK = (
     "        // Maps key comes from android/local.properties (git-ignored), written by\n"
     "        // tool/configure_platforms.py from mobile/.env.\n"
-    "        val mapsProperties = java.util.Properties()\n"
+    "        val mapsProperties = Properties()\n"
     '        rootProject.file("local.properties").takeIf { it.exists() }\n'
     "            ?.inputStream()?.use { mapsProperties.load(it) }\n"
     '        manifestPlaceholders["MAPS_API_KEY"] =\n'
@@ -154,7 +159,12 @@ def patch_gradle(text: str, kotlin: bool) -> tuple[str, bool]:
     if match is None:
         raise ValueError("no defaultConfig block")
     block = KTS_BLOCK if kotlin else GROOVY_BLOCK
-    return text[: match.end()] + block + text[match.end() :], True
+    text = text[: match.end()] + block + text[match.end() :]
+    if kotlin and "import java.util.Properties" not in text:
+        # Inside android { } the name `java` is Gradle's Java extension, so the
+        # fully qualified java.util.Properties does not resolve; import it.
+        text = "import java.util.Properties\n\n" + text
+    return text, True
 
 
 def configure_android(root: Path, env: dict[str, str], report: Report) -> None:
@@ -162,7 +172,7 @@ def configure_android(root: Path, env: dict[str, str], report: Report) -> None:
     if not android.is_dir():
         report.skip("android/ not found (run `flutter create --platforms=android .` first)")
         return
-    key = env.get("GOOGLE_MAPS_KEY_ANDROID", "")
+    key = maps_key_for(env, "ANDROID")
     props = android / "local.properties"
     current = props.read_text(encoding="utf-8") if props.exists() else ""
     report.write(props, set_property(current, "MAPS_API_KEY", key), "android/local.properties (Maps key)")
@@ -295,7 +305,7 @@ def configure_ios(root: Path, env: dict[str, str], report: Report) -> None:
     if not ios.is_dir():
         report.skip("ios/ not found (run `flutter create --platforms=ios .` first)")
         return
-    maps_key = env.get("GOOGLE_MAPS_KEY_IOS", "")
+    maps_key = maps_key_for(env, "IOS")
     client = env.get("GOOGLE_CLIENT_ID_IOS", "")
     secrets = ios / "Flutter/Secrets.xcconfig"
     text = (
@@ -394,7 +404,7 @@ def configure_web(root: Path, env: dict[str, str], report: Report) -> None:
     if not web.is_dir():
         report.skip("web/ not found (run `flutter create --platforms=web .` first)")
         return
-    key = env.get("GOOGLE_MAPS_KEY_WEB", "")
+    key = maps_key_for(env, "WEB")
     escaped = key.replace("\\", "\\\\").replace("'", "\\'")
     config = (
         "// Written by tool/configure_platforms.py from mobile/.env. Git-ignored.\n"

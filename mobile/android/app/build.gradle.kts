@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -20,6 +22,13 @@ android {
     }
 
     defaultConfig {
+        // Maps key comes from android/local.properties (git-ignored), written by
+        // tool/configure_platforms.py from mobile/.env.
+        val mapsProperties = Properties()
+        rootProject.file("local.properties").takeIf { it.exists() }
+            ?.inputStream()?.use { mapsProperties.load(it) }
+        manifestPlaceholders["MAPS_API_KEY"] =
+            mapsProperties.getProperty("MAPS_API_KEY", "")
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.ff_garage"
         // You can update the following values to match your application needs.

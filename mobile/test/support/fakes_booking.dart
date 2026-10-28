@@ -113,12 +113,14 @@ BookingQuote quote({double price = 499}) => BookingQuote(
       ],
     );
 
+BookingQuote _defaultQuote() => quote();
+
 /// In-memory bookings. Set [error] to fail every call, or one of the specific
 /// errors to fail just that call.
 class FakeBookingRepository implements BookingRepository {
   FakeBookingRepository({List<Booking>? bookings, BookingQuote? quoteResult})
       : bookings = bookings ?? [],
-        quoteResult = quoteResult ?? quote();
+        quoteResult = quoteResult ?? _defaultQuote();
 
   List<Booking> bookings;
   BookingQuote quoteResult;
