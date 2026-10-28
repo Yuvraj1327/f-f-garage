@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # Comma-separated in the environment (NoDecode stops pydantic-settings from
     # expecting JSON); parsed by the validator below.
     cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    # Also allow any http://localhost / 127.0.0.1 port (Flutter Web picks a random
+    # one in development). Only applies when APP_ENV=development.
+    cors_allow_local_dev_origins: bool = True
 
     # --- Supabase ----------------------------------------------------------
     supabase_url: str = ""
@@ -226,6 +229,13 @@ class Settings(BaseSettings):
             and self.supabase_anon_key.get_secret_value()
             and self.supabase_service_role_key.get_secret_value()
         )
+
+    @property
+    def cors_origin_regex(self) -> str | None:
+        """Regex for local dev origins; None unless enabled and APP_ENV=development."""
+        if self.cors_allow_local_dev_origins and self.app_env == "development":
+            return r"^http://(localhost|127\.0\.0\.1)(:\d+)?$"
+        return None
 
     @property
     def maps_enabled(self) -> bool:
