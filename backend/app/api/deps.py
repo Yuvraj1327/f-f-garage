@@ -14,12 +14,18 @@ from app.db.availability_repository import (
 )
 from app.db.booking_repository import BookingRepository, SupabaseBookingRepository
 from app.db.catalog_repository import CatalogRepository, SupabaseCatalogRepository
+from app.db.coupon_repository import CouponRepository, SupabaseCouponRepository
+from app.db.extra_request_repository import (
+    ExtraRequestRepository,
+    SupabaseExtraRequestRepository,
+)
 from app.db.garage_settings_repository import (
     GarageSettingsRepository,
     SupabaseGarageSettingsRepository,
 )
 from app.db.payment_repository import PaymentRepository, SupabasePaymentRepository
 from app.db.profile_repository import ProfileRepository, SupabaseProfileRepository
+from app.db.refund_repository import RefundRepository, SupabaseRefundRepository
 from app.db.service_area_repository import ServiceAreaRepository, SupabaseServiceAreaRepository
 from app.db.supabase import get_supabase_admin_client
 from app.db.tracking_repository import (
@@ -31,10 +37,13 @@ from app.db.tracking_repository import (
 from app.db.vehicle_repository import SupabaseVehicleRepository, VehicleRepository
 from app.services.assignment_service import AssignmentService
 from app.services.availability_service import AvailabilityService
+from app.services.billing_service import BillingService
 from app.services.booking_service import BookingService
 from app.services.catalog_service import CatalogService
+from app.services.coupon_service import CouponService
 from app.services.driver_admin_service import DriverAdminService
 from app.services.driver_work_service import DriverWorkService
+from app.services.extra_request_service import ExtraRequestService
 from app.services.garage_settings_service import GarageSettingsService
 from app.services.geocoding_gateway import GeocodingGateway, GoogleGeocodingGateway
 from app.services.health_service import HealthService
@@ -230,6 +239,34 @@ def get_vehicle_service(vehicles: VehicleRepositoryDep) -> VehicleService:
 VehicleServiceDep = Annotated[VehicleService, Depends(get_vehicle_service)]
 
 
+def get_coupon_repository(settings: SettingsDep) -> CouponRepository:
+    return SupabaseCouponRepository(get_supabase_admin_client(settings))
+
+
+CouponRepositoryDep = Annotated[CouponRepository, Depends(get_coupon_repository)]
+
+
+def get_coupon_service(coupons: CouponRepositoryDep) -> CouponService:
+    return CouponService(coupons)
+
+
+CouponServiceDep = Annotated[CouponService, Depends(get_coupon_service)]
+
+
+def get_extra_request_repository(settings: SettingsDep) -> ExtraRequestRepository:
+    return SupabaseExtraRequestRepository(get_supabase_admin_client(settings))
+
+
+ExtraRequestRepositoryDep = Annotated[ExtraRequestRepository, Depends(get_extra_request_repository)]
+
+
+def get_refund_repository(settings: SettingsDep) -> RefundRepository:
+    return SupabaseRefundRepository(get_supabase_admin_client(settings))
+
+
+RefundRepositoryDep = Annotated[RefundRepository, Depends(get_refund_repository)]
+
+
 def get_booking_service(
     bookings: BookingRepositoryDep,
     catalog: CatalogRepositoryDep,
@@ -241,6 +278,8 @@ def get_booking_service(
     profiles: ProfileRepositoryDep,
     tracking: TrackingRepositoryDep,
     vehicles: VehicleRepositoryDep,
+    coupons: CouponServiceDep,
+    extras: ExtraRequestRepositoryDep,
 ) -> BookingService:
     return BookingService(
         bookings,
@@ -253,6 +292,8 @@ def get_booking_service(
         profiles=profiles,
         tracking=tracking,
         vehicles=vehicles,
+        coupons=coupons,
+        extras=extras,
     )
 
 
@@ -264,11 +305,38 @@ def get_payment_service(
     bookings: BookingRepositoryDep,
     gateway: PaymentGatewayDep,
     settings: SettingsDep,
+    extras: ExtraRequestRepositoryDep,
+    refunds: RefundRepositoryDep,
 ) -> PaymentService:
-    return PaymentService(payments, bookings, gateway, settings)
+    return PaymentService(payments, bookings, gateway, settings, extras=extras, refunds=refunds)
 
 
 PaymentServiceDep = Annotated[PaymentService, Depends(get_payment_service)]
+
+
+def get_billing_service(
+    bookings: BookingRepositoryDep,
+    payments: PaymentRepositoryDep,
+    extras: ExtraRequestRepositoryDep,
+    refunds: RefundRepositoryDep,
+    garage: GarageSettingsServiceDep,
+    settings: SettingsDep,
+) -> BillingService:
+    return BillingService(bookings, payments, extras, refunds, garage, settings)
+
+
+BillingServiceDep = Annotated[BillingService, Depends(get_billing_service)]
+
+
+def get_extra_request_service(
+    extras: ExtraRequestRepositoryDep,
+    bookings: BookingRepositoryDep,
+    assignments: AssignmentRepositoryDep,
+) -> ExtraRequestService:
+    return ExtraRequestService(extras, bookings, assignments)
+
+
+ExtraRequestServiceDep = Annotated[ExtraRequestService, Depends(get_extra_request_service)]
 
 
 def get_assignment_service(

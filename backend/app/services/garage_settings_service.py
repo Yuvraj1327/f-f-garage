@@ -7,7 +7,7 @@ from app.db.garage_settings_repository import GarageSettingsRepository
 from app.schemas.garage import GarageSettingsOut, GarageSettingsUpdate, clean_phone
 from app.schemas.profile import ProfileOut
 
-_FIELDS = ("name", "phone", "whatsapp", "email", "address", "hours")
+_FIELDS = ("name", "phone", "whatsapp", "email", "address", "hours", "refund_policy")
 
 
 class GarageSettingsService:

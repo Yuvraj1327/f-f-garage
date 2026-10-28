@@ -13,6 +13,34 @@ import '../support/fakes_maps.dart';
 import '../support/fakes_vehicles.dart';
 import '../support/pump_app.dart';
 
+/// Opens a pick list field, searches it and taps the option.
+Future<void> pickOption(
+  WidgetTester tester,
+  String fieldKey,
+  String option, {
+  String? search,
+}) async {
+  await tester.ensureVisible(find.byKey(ValueKey(fieldKey)));
+  await tester.tap(find.byKey(ValueKey(fieldKey)));
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find.byKey(const ValueKey('picker-search')),
+    search ?? option,
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(ValueKey('option-$option')));
+  await tester.pumpAndSettle();
+}
+
+/// Opens a pick list field and takes the "Enter manually" row.
+Future<void> pickManually(WidgetTester tester, String fieldKey) async {
+  await tester.ensureVisible(find.byKey(ValueKey(fieldKey)));
+  await tester.tap(find.byKey(ValueKey(fieldKey)));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const ValueKey('option-manual')));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   group('registration rule', () {
     test('accepts real plate shapes and normalises them', () {
@@ -61,19 +89,18 @@ void main() {
       await tester.pumpAndSettle();
 
       // Nothing filled in: every required field complains.
-      await tapText(tester, 'Save vehicle');
+      await tapText(tester, 'Confirm vehicle');
       expect(find.textContaining('valid registration number'), findsOneWidget);
-      expect(find.text('Enter the make, e.g. Honda'), findsOneWidget);
-      expect(find.text('Enter the model, e.g. Activa'), findsOneWidget);
+      expect(find.text('Select the vehicle make'), findsOneWidget);
       expect(harness.vehicles.items, isEmpty);
 
       await tester.enterText(
           find.byKey(const ValueKey('vehicle-registration')), 'mh 12 ab 1234');
-      await tester.enterText(find.byKey(const ValueKey('vehicle-make')), 'Honda');
-      await tester.enterText(find.byKey(const ValueKey('vehicle-model')), 'Shine');
       await tester.tap(find.byKey(const ValueKey('type-bike')));
       await tester.pumpAndSettle();
-      await tapText(tester, 'Save vehicle');
+      await pickOption(tester, 'vehicle-make', 'Honda');
+      await pickOption(tester, 'vehicle-model', 'Shine', search: 'shi');
+      await tapText(tester, 'Confirm vehicle');
 
       final saved = harness.vehicles.items.single;
       expect(saved.registration, 'MH12AB1234');
@@ -83,6 +110,71 @@ void main() {
       expect(harness.preferences.getString('selected_vehicle'), saved.id);
     });
 
+    testWidgets('a make and model that are not listed can be typed in',
+        (tester) async {
+      final harness = await open(tester);
+      await tester.tap(find.byKey(const ValueKey('add-vehicle')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const ValueKey('vehicle-registration')), 'KA01AB1234');
+
+      await pickManually(tester, 'vehicle-make');
+      // A make typed by hand means the model is typed by hand too.
+      await tester.enterText(find.byKey(const ValueKey('vehicle-make')), 'Lohia');
+      await tester.enterText(find.byKey(const ValueKey('vehicle-model')), 'Oma Star');
+      await tapText(tester, 'Confirm vehicle');
+
+      final saved = harness.vehicles.items.single;
+      expect(saved.make, 'Lohia');
+      expect(saved.model, 'Oma Star');
+    });
+
+    testWidgets('a listed make with a model that is not listed', (tester) async {
+      final harness = await open(tester);
+      await tester.tap(find.byKey(const ValueKey('add-vehicle')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const ValueKey('vehicle-registration')), 'KA01AB1234');
+      await pickOption(tester, 'vehicle-make', 'Hero');
+      await pickManually(tester, 'vehicle-model');
+      await tester.enterText(find.byKey(const ValueKey('vehicle-model')), 'Old 100');
+      await tapText(tester, 'Confirm vehicle');
+
+      expect(harness.vehicles.items.single.make, 'Hero');
+      expect(harness.vehicles.items.single.model, 'Old 100');
+    });
+
+    testWidgets('the model list follows the make and the vehicle type',
+        (tester) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('add-vehicle')));
+      await tester.pumpAndSettle();
+
+      // No model can be chosen before a make.
+      expect(find.text('Select the make first'), findsOneWidget);
+
+      await pickOption(tester, 'vehicle-make', 'Honda');
+      await tester.tap(find.byKey(const ValueKey('vehicle-model')));
+      await tester.pumpAndSettle();
+      // Scooter is the default type: Activa yes, Shine (a bike) no.
+      expect(find.byKey(const ValueKey('option-Activa 6G')), findsOneWidget);
+      expect(find.byKey(const ValueKey('option-Shine')), findsNothing);
+      expect(find.text("Can't find model? Enter manually"), findsOneWidget);
+    });
+
+    testWidgets('searching the make list narrows it', (tester) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('add-vehicle')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('vehicle-make')));
+      await tester.pumpAndSettle();
+      expect(find.text("Can't find vehicle make? Enter manually"), findsOneWidget);
+      await tester.enterText(find.byKey(const ValueKey('picker-search')), 'ola');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('option-Ola Electric')), findsOneWidget);
+      expect(find.byKey(const ValueKey('option-Honda')), findsNothing);
+    });
+
     testWidgets('shows the server refusal for a duplicate plate',
         (tester) async {
       final harness = await open(tester, saved: [vehicle()]);
@@ -90,9 +182,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(
           find.byKey(const ValueKey('vehicle-registration')), 'MH12AB1234');
-      await tester.enterText(find.byKey(const ValueKey('vehicle-make')), 'TVS');
-      await tester.enterText(find.byKey(const ValueKey('vehicle-model')), 'Ntorq');
-      await tapText(tester, 'Save vehicle');
+      await pickOption(tester, 'vehicle-make', 'TVS');
+      await pickOption(tester, 'vehicle-model', 'Ntorq 125');
+      await tapText(tester, 'Confirm vehicle');
       expect(find.text('You have already saved this vehicle'), findsOneWidget);
       expect(harness.vehicles.items.length, 1);
     });
@@ -105,12 +197,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Edit vehicle'), findsOneWidget);
-      await tester.enterText(find.byKey(const ValueKey('vehicle-model')), 'Ntorq');
+      await pickOption(tester, 'vehicle-model', 'Ntorq 125');
       await tester.enterText(
           find.byKey(const ValueKey('vehicle-nickname')), 'Office ride');
       await tapText(tester, 'Save changes');
 
-      expect(harness.vehicles.items.single.model, 'Ntorq');
+      expect(harness.vehicles.items.single.model, 'Ntorq 125');
       expect(harness.vehicles.items.single.nickname, 'Office ride');
       expect(find.text('Office ride'), findsOneWidget);
     });
@@ -215,7 +307,7 @@ void main() {
       await tester.enterText(find.byKey(const ValueKey('home-search')), 'general');
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pumpAndSettle();
-      expect(find.text('Our services'), findsOneWidget);
+      expect(find.text('2-Wheeler Services'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'general'), findsOneWidget);
     });
   });

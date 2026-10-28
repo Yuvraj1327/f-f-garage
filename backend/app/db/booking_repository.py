@@ -23,6 +23,7 @@ _HINTS = {
     "slot_full": SLOT_FULL,
     "bookings_one_active_per_customer_slot": ALREADY_BOOKED,
     "bookings_client_request_key": "This request was already submitted.",
+    "coupon_unavailable": "This coupon is no longer available. Remove it and try again.",
 }
 _SELECT = "*, booking_extra_charges(*)"
 

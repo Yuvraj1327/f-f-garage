@@ -160,7 +160,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
   Widget _body(Booking booking) {
     if (_phase == _Phase.paid) {
-      return _Paid(payment: _paid!, onDone: _viewBooking);
+      return _Paid(
+        payment: _paid!,
+        onDone: _viewBooking,
+        balance: _paid!.kind == PaymentKind.balance,
+      );
     }
     if (_phase == _Phase.confirming) {
       return _Confirming(
@@ -169,13 +173,22 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         onBack: _viewBooking,
       );
     }
-    if (booking.isPaid && booking.payment != null) {
-      return _Paid(payment: booking.payment!, onDone: _viewBooking);
+    if (booking.isPaid && booking.payment != null && !booking.canPayBalance) {
+      return _Paid(
+        payment: booking.payment!,
+        onDone: _viewBooking,
+        balance: false,
+      );
     }
-    if (!booking.canPay && _phase != _Phase.working) {
+    if (!(booking.canPay || booking.canPayBalance) && _phase != _Phase.working) {
       return _Unavailable(booking: booking, onBack: _viewBooking);
     }
     final working = _phase == _Phase.working;
+    // The server prices the payment; this is only what it will ask for.
+    final isBalance = booking.canPayBalance;
+    final amount = isBalance
+        ? booking.balanceDue
+        : (booking.advanceAmount > 0 ? booking.advanceAmount : booking.totalAmount);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -195,11 +208,39 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             Text('${booking.serviceName} - ${booking.packageName}'),
             Text('${formatDate(booking.date)}, ${booking.timeLabel}'),
             const Divider(),
+            if (isBalance) ...[
+              SummaryRow(
+                label: 'Final bill',
+                value: formatMoney(booking.finalTotal),
+              ),
+              SummaryRow(
+                label: 'Already paid',
+                value: '- ${formatMoney(booking.amountPaid)}',
+              ),
+            ] else if (booking.advanceAmount > 0) ...[
+              SummaryRow(
+                label: 'Estimated total',
+                value: formatMoney(booking.totalAmount),
+              ),
+            ],
             SummaryRow(
-              label: 'Amount to pay',
-              value: formatMoney(booking.totalAmount),
+              label: isBalance
+                  ? 'Balance to pay'
+                  : (booking.advanceAmount > 0
+                      ? 'Advance to pay now'
+                      : 'Amount to pay'),
+              value: formatMoney(amount),
               bold: true,
             ),
+            if (!isBalance && booking.advanceAmount > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'The rest is paid after the service. Any extra parts or '
+                  'repairs are added only if you approve them.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
           ],
         ),
         const SizedBox(height: 8),
@@ -214,8 +255,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                 )
               : Text(
                   _phase == _Phase.failed || _phase == _Phase.cancelled
-                      ? 'Try again - ${formatMoney(booking.totalAmount)}'
-                      : 'Pay ${formatMoney(booking.totalAmount)}',
+                      ? 'Try again - ${formatMoney(amount)}'
+                      : 'Pay ${formatMoney(amount)}',
                 ),
         ),
         const SizedBox(height: 8),
@@ -230,10 +271,17 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 }
 
 class _Paid extends StatelessWidget {
-  const _Paid({required this.payment, required this.onDone});
+  const _Paid({
+    required this.payment,
+    required this.onDone,
+    required this.balance,
+  });
 
   final Payment payment;
   final VoidCallback onDone;
+
+  /// The balance after the service (otherwise the advance when booking).
+  final bool balance;
 
   @override
   Widget build(BuildContext context) {
@@ -248,9 +296,11 @@ class _Paid extends StatelessWidget {
             color: Theme.of(context).colorScheme.primary,
           ),
         ),
-        const MessageBanner(
+        MessageBanner(
           isError: false,
-          message: 'Payment received. Your booking is confirmed.',
+          message: balance
+              ? 'Payment received. Your bill is settled. Thank you!'
+              : 'Advance received. Your booking is confirmed.',
         ),
         SectionCard(
           title: 'Payment',

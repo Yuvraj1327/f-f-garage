@@ -541,6 +541,21 @@ Service areas, Availability and Garage details stay on the Admin Dashboard. Ther
 
 **Themes.** Light (default: white pages, royal-blue buttons, navy text), Dark (black page, dark-grey cards, white text, blue buttons) and System default. One `ThemeController` (`core/preferences/app_preferences.dart`) feeds `MaterialApp.themeMode`; both `ThemeData` objects come from `app/theme/app_theme.dart`. The choice is saved with `shared_preferences`, so it survives restarts, logout and the next sign-in. Status badges and the logo (which sits on a white plate) adapt to the theme.
 
+## Service flow: advance, extras, final bill
+
+- **Catalog**: services sit in 4 tabs (Book a Mechanic, Service Packages, Specific Repair, Engine Repair); packages carry original price, inclusions, exclusions, warranty and a parts policy. One service per booking.
+- **Checkout** (`/home/checkout`): location, slot (instant = earliest open slot), optional coupon. The server prices everything (`POST /bookings/quote`) and the booking is rejected if the total moved.
+- **Advance**: 20% of the estimate (`ADVANCE_PAYMENT_PERCENT`) is paid through Razorpay at booking; the server verifies it. Old bookings (no advance) still pay in full.
+- **Extras**: while a job is `in_progress` the driver or an admin can request an extra part or repair. The customer approves or declines it; only approved amounts are billed. A job cannot be completed with a request still open.
+- **Final bill**: estimate + approved extras - advance already paid = balance, paid after completion (`GET /bookings/{id}/bill`).
+- **Refunds are manual**: an admin refunds in the Razorpay dashboard and records it in the app. The policy text is set in garage settings; the app never moves money or invents a refund.
+- **Coupons**: admins manage percent or flat coupons under Admin > Coupons.
+
+## Service pictures and vehicle make/model
+
+- Three bundled pictures (`assets/images/services/`: Book a Mechanic, Check My Vehicle, Mechanic Consultation) are matched by service name; each has a 1:1 crop for list cards and a 16:9 banner for the top of the service screen. An admin's own picture link wins over them; services with neither show a circular light-blue category icon (Engine, Brakes, Battery, Chain, Cables, Lights, Tyres, Filters, Lubricants, Electrical, other).
+- Add vehicle: searchable make and model lists (`lib/data/vehicle_catalog.dart`, bikes and scooters only). "Can't find ...? Enter manually" lets the customer type either. Make and model are stored as plain text through the existing `/vehicles` API; no migration and no external vehicle service is used, and the registration is **not** verified with the RTO.
+
 ## Environment variables
 
 Backend: copy `backend/.env.example` to `backend/.env`.

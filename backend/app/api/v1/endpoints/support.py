@@ -36,4 +36,5 @@ def read_contact(user: CurrentUserDep, garage: GarageSettingsServiceDep) -> Supp
         email=current.email,
         address=current.address,
         hours=current.hours,
+        refund_policy=current.refund_policy,
     )

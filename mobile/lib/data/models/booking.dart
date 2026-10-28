@@ -79,6 +79,16 @@ class Booking {
     this.payment,
     this.isPaid = false,
     this.canPay = false,
+    this.couponCode,
+    this.discountAmount = 0,
+    this.advanceAmount = 0,
+    this.advancePercent = 20,
+    this.approvedExtrasTotal = 0,
+    this.pendingExtrasCount = 0,
+    double? finalTotal,
+    this.amountPaid = 0,
+    double? balanceDue,
+    this.canPayBalance = false,
     this.driver,
     this.assignment,
     this.canAssign = false,
@@ -99,7 +109,8 @@ class Booking {
     this.vehicleNickname,
     this.cancellationReason,
     this.cancelBlockedReason,
-  });
+  })  : _finalTotal = finalTotal,
+        _balanceDue = balanceDue;
 
   factory Booking.fromJson(Map<String, dynamic> json) => Booking(
         id: JsonReader.string(json, 'id'),
@@ -161,6 +172,23 @@ class Booking {
         canPay: json['can_pay'] == null
             ? false
             : JsonReader.boolean(json, 'can_pay'),
+        couponCode: JsonReader.optionalString(json, 'coupon_code'),
+        discountAmount: _moneyOr(json, 'discount_amount', 0),
+        advanceAmount: _moneyOr(json, 'advance_amount', 0),
+        advancePercent: _moneyOr(json, 'advance_percent', 20),
+        approvedExtrasTotal: _moneyOr(json, 'approved_extras_total', 0),
+        pendingExtrasCount:
+            JsonReader.optionalInteger(json, 'pending_extras_count') ?? 0,
+        finalTotal: json['final_total'] == null
+            ? null
+            : JsonReader.money(json, 'final_total'),
+        amountPaid: _moneyOr(json, 'amount_paid', 0),
+        balanceDue: json['balance_due'] == null
+            ? null
+            : JsonReader.money(json, 'balance_due'),
+        canPayBalance: json['can_pay_balance'] == null
+            ? false
+            : JsonReader.boolean(json, 'can_pay_balance'),
         driver: json['driver'] == null
             ? null
             : DriverSummary.fromJson(_object(json, 'driver')),
@@ -248,8 +276,36 @@ class Booking {
   /// True only after the server has verified a payment.
   final bool isPaid;
 
-  /// The server says a payment can be started now.
+  /// The server says the advance can be paid now.
   final bool canPay;
+
+  /// A coupon applied when booking, and the rupees it took off.
+  final String? couponCode;
+  final double discountAmount;
+
+  /// What is collected when booking (a share of the estimated total).
+  final double advanceAmount;
+  final double advancePercent;
+
+  /// Extra parts/repairs the customer approved after the diagnosis.
+  final double approvedExtrasTotal;
+
+  /// Extra requests still waiting for the customer's answer.
+  final int pendingExtrasCount;
+  final double? _finalTotal;
+  final double amountPaid;
+  final double? _balanceDue;
+
+  /// The service is done and the balance can be paid now.
+  final bool canPayBalance;
+
+  /// Estimated total plus approved extras.
+  double get finalTotal => _finalTotal ?? totalAmount + approvedExtrasTotal;
+
+  /// What is still to pay (final total minus everything paid).
+  double get balanceDue => _balanceDue ?? 0;
+
+  bool get hasPendingExtras => pendingExtrasCount > 0;
 
   /// The driver, once one is assigned (customer view; null when cancelled).
   final DriverSummary? driver;
@@ -275,6 +331,9 @@ class Booking {
   List<BookingCharge> get possibleCharges =>
       charges.where((c) => !c.includedInTotal).toList();
 }
+
+double _moneyOr(Map<String, dynamic> json, String key, double fallback) =>
+    json[key] == null ? fallback : JsonReader.money(json, key);
 
 Map<String, dynamic> _paymentJson(Object? value) => _asObject('payment', value);
 
@@ -351,7 +410,13 @@ class BookingQuote {
     required this.packagePrice,
     required this.charges,
     this.durationMinutes,
-  });
+    this.couponCode,
+    this.discountAmount = 0,
+    this.advancePercent = 20,
+    double? totalAmount,
+    double? advanceAmount,
+  })  : _totalAmount = totalAmount,
+        _advanceAmount = advanceAmount;
 
   factory BookingQuote.fromJson(Map<String, dynamic> json) => BookingQuote(
         serviceId: JsonReader.string(json, 'service_id'),
@@ -370,6 +435,15 @@ class BookingQuote {
           'extra_charges',
           QuoteCharge.fromJson,
         ),
+        couponCode: JsonReader.optionalString(json, 'coupon_code'),
+        discountAmount: _moneyOr(json, 'discount_amount', 0),
+        advancePercent: _moneyOr(json, 'advance_percent', 20),
+        totalAmount: json['total_amount'] == null
+            ? null
+            : JsonReader.money(json, 'total_amount'),
+        advanceAmount: json['advance_amount'] == null
+            ? null
+            : JsonReader.money(json, 'advance_amount'),
       );
 
   final String serviceId;
@@ -381,6 +455,20 @@ class BookingQuote {
   final int? durationMinutes;
   final double packagePrice;
   final List<QuoteCharge> charges;
+
+  /// The coupon the server accepted, and the rupees it takes off.
+  final String? couponCode;
+  final double discountAmount;
+  final double advancePercent;
+  final double? _totalAmount;
+  final double? _advanceAmount;
+
+  /// The server's estimated total for the add-ons it was asked about
+  /// (package + add-ons - discount).
+  double get serverTotal => _totalAmount ?? packagePrice;
+
+  /// Collected when booking.
+  double get serverAdvance => _advanceAmount ?? 0;
 
   /// Total for the chosen add-ons, in whole paise to avoid floating-point drift.
   double totalFor(Set<String> chosenIds) {
@@ -416,9 +504,13 @@ class NewBooking {
     this.longitude,
     this.notes,
     this.vehicleId,
+    this.couponCode,
   });
 
   final String packageId;
+
+  /// A coupon the customer typed; the server checks it and sets the discount.
+  final String? couponCode;
 
   /// One of the customer's saved vehicles (optional).
   final String? vehicleId;

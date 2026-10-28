@@ -88,6 +88,11 @@ class DriverWorkService:
                 raise ForbiddenError("This account has been disabled")
             case "booking_cancelled":
                 raise ConflictError("This booking was cancelled")
+            case "extras_pending":
+                raise ConflictError(
+                    "The customer has not answered your extra charge request yet. "
+                    "Wait for the answer or withdraw it before finishing the job."
+                )
             case "invalid_transition":
                 current = outcome.booking_status
                 expected = rules.driver_next_status(current) if current else None

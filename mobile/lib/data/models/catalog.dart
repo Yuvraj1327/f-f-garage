@@ -50,7 +50,12 @@ class ServicePackage {
     required this.displayOrder,
     required this.isActive,
     required this.extraCharges,
+    this.exclusions = const [],
+    this.partsPolicy = PartsPolicy.serviceOnly,
     this.description,
+    this.originalPrice,
+    this.warrantyDays,
+    this.partsNote,
     this.estimatedDurationMinutes,
   });
 
@@ -60,7 +65,16 @@ class ServicePackage {
         name: JsonReader.string(json, 'name'),
         description: JsonReader.optionalString(json, 'description'),
         price: JsonReader.money(json, 'price'),
+        originalPrice: JsonReader.optionalMoney(json, 'original_price'),
         inclusions: JsonReader.stringList(json, 'inclusions'),
+        exclusions: json['exclusions'] == null
+            ? const []
+            : JsonReader.stringList(json, 'exclusions'),
+        warrantyDays: JsonReader.optionalInteger(json, 'warranty_days'),
+        partsPolicy: PartsPolicy.fromApiValue(
+          JsonReader.optionalString(json, 'parts_policy') ?? 'service_only',
+        ),
+        partsNote: JsonReader.optionalString(json, 'parts_note'),
         estimatedDurationMinutes:
             JsonReader.optionalInteger(json, 'estimated_duration_minutes'),
         displayOrder: JsonReader.integer(json, 'display_order'),
@@ -75,8 +89,27 @@ class ServicePackage {
   final String name;
   final String? description;
   final double price;
+
+  /// The crossed-out price, when the garage shows a discount.
+  final double? originalPrice;
   final List<String> inclusions;
+
+  /// What the price does not cover.
+  final List<String> exclusions;
+  final int? warrantyDays;
+  final PartsPolicy partsPolicy;
+  final String? partsNote;
   final int? estimatedDurationMinutes;
+
+  bool get hasDiscount => originalPrice != null && originalPrice! > price;
+
+  /// "30 days", "6 months" ... for the warranty chip.
+  String? get warrantyLabel {
+    final days = warrantyDays;
+    if (days == null) return null;
+    if (days % 30 == 0 && days >= 60) return '${days ~/ 30} months';
+    return days == 1 ? '1 day' : '$days days';
+  }
   final int displayOrder;
   final bool isActive;
 
@@ -96,7 +129,11 @@ class GarageService {
     required this.isActive,
     required this.packages,
     required this.extraCharges,
+    this.catalogTab = CatalogTab.package,
     this.description,
+    this.repairGroup,
+    this.imageUrl,
+    this.badge,
   });
 
   factory GarageService.fromJson(Map<String, dynamic> json) => GarageService(
@@ -106,6 +143,12 @@ class GarageService {
             VehicleType.fromApiValue(JsonReader.string(json, 'vehicle_type')),
         category: JsonReader.string(json, 'category'),
         description: JsonReader.optionalString(json, 'description'),
+        catalogTab: CatalogTab.fromApiValue(
+          JsonReader.optionalString(json, 'catalog_tab') ?? 'package',
+        ),
+        repairGroup: JsonReader.optionalString(json, 'repair_group'),
+        imageUrl: JsonReader.optionalString(json, 'image_url'),
+        badge: JsonReader.optionalString(json, 'badge'),
         displayOrder: JsonReader.integer(json, 'display_order'),
         isActive: JsonReader.boolean(json, 'is_active'),
         packages: JsonReader.objectList(
@@ -125,6 +168,16 @@ class GarageService {
   final VehicleType vehicleType;
   final String category;
   final String? description;
+
+  /// Which tab of the service screen lists it.
+  final CatalogTab catalogTab;
+
+  /// For repairs: the filter chip it belongs to (Brakes, Cables ...).
+  final String? repairGroup;
+  final String? imageUrl;
+
+  /// A short label such as "Popular" or "Best value".
+  final String? badge;
   final int displayOrder;
   final bool isActive;
   final List<ServicePackage> packages;

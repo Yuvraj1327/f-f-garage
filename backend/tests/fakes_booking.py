@@ -44,6 +44,8 @@ class FakeBookingRepository:
         # Called as (booking_id, old_status_or_None, new_status) whenever a booking's status
         # changes (the database records history and notifications with triggers).
         self.on_status: list = []
+        # Set by the test context so a booking with a coupon records its redemption.
+        self.coupons = None
 
     # ---- helpers -----------------------------------------------------------------------
     def emit_status(self, booking_id: UUID, old: BookingStatus | None, new: BookingStatus) -> None:
@@ -53,7 +55,9 @@ class FakeBookingRepository:
     def _record(self, row: dict[str, Any]) -> BookingRecord:
         data = dict(row)
         data["extra_charges"] = self.charges.get(row["id"], [])
-        data["total_amount"] = row["package_price"] + row["extra_charges_total"]
+        data["total_amount"] = (
+            row["package_price"] + row["extra_charges_total"] - row["discount_amount"]
+        )
         return BookingRecord.model_validate(data)
 
     def _sync_counts(self) -> None:
@@ -137,6 +141,9 @@ class FakeBookingRepository:
                 Decimal("0"),
             ),
             "customer_notes": values.get("customer_notes"),
+            "coupon_code": values.get("coupon_code"),
+            "discount_amount": Decimal(values.get("discount_amount") or "0"),
+            "advance_amount": Decimal(values.get("advance_amount") or "0"),
             "vehicle_registration": values.get("vehicle_registration"),
             "vehicle_make": values.get("vehicle_make"),
             "vehicle_model": values.get("vehicle_model"),
@@ -152,6 +159,11 @@ class FakeBookingRepository:
         }
         self._check_unique(row)
         self._check_capacity(row)
+        if row["coupon_code"] and self.coupons is not None:
+            coupon = self.coupons.get_by_code(row["coupon_code"])
+            if coupon is None or not coupon.is_active:
+                raise ConflictError("This coupon is no longer available. Remove it and try again.")
+            self.coupons.redemptions.append((coupon.id, customer))
         self._next_number += 1
         self.rows[row["id"]] = row
         self.charges[row["id"]] = [

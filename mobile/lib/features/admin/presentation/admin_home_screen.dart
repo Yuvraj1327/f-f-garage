@@ -95,6 +95,12 @@ class AdminHomeScreen extends ConsumerWidget {
                 onTap: () => context.push(AppRoutes.adminServices),
               ),
               _Tile(
+                icon: Icons.local_offer_outlined,
+                title: 'Coupons',
+                subtitle: 'Discount codes for checkout',
+                onTap: () => context.push(AppRoutes.adminCoupons),
+              ),
+              _Tile(
                 icon: Icons.location_on_outlined,
                 title: 'Service areas',
                 subtitle: 'PIN codes where doorstep service is available',
@@ -109,7 +115,7 @@ class AdminHomeScreen extends ConsumerWidget {
               _Tile(
                 icon: Icons.storefront_outlined,
                 title: 'Garage details',
-                subtitle: 'Name, phone, email and opening hours',
+                subtitle: 'Name, contact details and refund policy',
                 onTap: () => context.push(AppRoutes.settingsGarage),
               ),
             ],

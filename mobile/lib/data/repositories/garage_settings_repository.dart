@@ -17,6 +17,7 @@ class GarageSettingsRepository {
     required String email,
     required String address,
     required String hours,
+    String refundPolicy = '',
   }) async =>
       _parse(
         await _service.save({
@@ -26,6 +27,7 @@ class GarageSettingsRepository {
           'email': email,
           'address': address,
           'hours': hours,
+          'refund_policy': refundPolicy,
         }),
       );
 

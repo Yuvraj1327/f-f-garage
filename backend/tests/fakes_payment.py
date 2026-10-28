@@ -116,6 +116,7 @@ class FakePaymentRepository:
             customer_id=UUID(values["customer_id"]),
             provider=values["provider"],
             provider_order_id=order,
+            kind=values.get("kind", "advance"),
             amount=Decimal(values["amount"]),
             currency=values.get("currency", "INR"),
             status=S.PENDING,
@@ -139,6 +140,15 @@ class FakePaymentRepository:
     def list_for_booking(self, booking_id: UUID) -> list[PaymentRecord]:
         rows = [r for r in self.rows.values() if r.booking_id == booking_id]
         return sorted(rows, key=lambda r: r.created_at, reverse=True)
+
+    def for_bookings(self, booking_ids: list[UUID]) -> dict[UUID, list[PaymentRecord]]:
+        return {i: self.list_for_booking(i) for i in booking_ids if self.list_for_booking(i)}
+
+    def resolve_review(self, payment_id: UUID) -> PaymentRecord | None:
+        record = self.rows.get(payment_id)
+        if record is None:
+            return None
+        return self._set(record, needs_review=False)
 
     def summaries_for(self, booking_ids: list[UUID]) -> dict[UUID, PaymentRecord]:
         out: dict[UUID, PaymentRecord] = {}
@@ -315,6 +325,7 @@ class FakePaymentRepository:
                 other = any(
                     r.booking_id == record.booking_id
                     and r.status == S.SUCCESSFUL
+                    and r.kind == record.kind
                     and r.id != record.id
                     for r in self.rows.values()
                 )
@@ -339,7 +350,7 @@ class FakePaymentRepository:
                         paid_at=datetime.now(UTC),
                         failure_reason=None,
                     )
-                    if booking_status == BookingStatus.PENDING_PAYMENT:
+                    if record.kind == "advance" and booking_status == BookingStatus.PENDING_PAYMENT:
                         self.bookings.confirm_paid(record.booking_id)
                         result = "paid"
                     elif booking_status == BookingStatus.CANCELLED:

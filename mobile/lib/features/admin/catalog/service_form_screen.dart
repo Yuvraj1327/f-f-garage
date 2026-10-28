@@ -57,7 +57,11 @@ class _ServiceFormState extends ConsumerState<_ServiceForm> {
   late final TextEditingController _category;
   late final TextEditingController _description;
   late final TextEditingController _order;
+  late final TextEditingController _group;
+  late final TextEditingController _image;
+  late final TextEditingController _badge;
   late VehicleType _vehicle;
+  late CatalogTab _tab;
   late bool _active;
   bool _busy = false;
   String? _error;
@@ -72,6 +76,10 @@ class _ServiceFormState extends ConsumerState<_ServiceForm> {
     _category = TextEditingController(text: s?.category ?? 'General');
     _description = TextEditingController(text: s?.description ?? '');
     _order = TextEditingController(text: (s?.displayOrder ?? 0).toString());
+    _group = TextEditingController(text: s?.repairGroup ?? '');
+    _image = TextEditingController(text: s?.imageUrl ?? '');
+    _badge = TextEditingController(text: s?.badge ?? '');
+    _tab = s?.catalogTab ?? CatalogTab.package;
     _vehicle = s?.vehicleType ?? VehicleType.scooter;
     _active = s?.isActive ?? true;
   }
@@ -82,6 +90,9 @@ class _ServiceFormState extends ConsumerState<_ServiceForm> {
     _category.dispose();
     _description.dispose();
     _order.dispose();
+    _group.dispose();
+    _image.dispose();
+    _badge.dispose();
     super.dispose();
   }
 
@@ -99,6 +110,11 @@ class _ServiceFormState extends ConsumerState<_ServiceForm> {
     final description =
         _description.text.trim().isEmpty ? null : _description.text.trim();
     final order = int.tryParse(_order.text.trim()) ?? 0;
+    String? orNull(TextEditingController c) =>
+        c.text.trim().isEmpty ? null : c.text.trim();
+    final group = _tab == CatalogTab.repair ? orNull(_group) : null;
+    final image = orNull(_image);
+    final badge = orNull(_badge);
     try {
       final existing = _existing;
       if (existing == null) {
@@ -107,6 +123,10 @@ class _ServiceFormState extends ConsumerState<_ServiceForm> {
           vehicleType: _vehicle,
           category: category,
           description: description,
+          catalogTab: _tab,
+          repairGroup: group,
+          imageUrl: image,
+          badge: badge,
           displayOrder: order,
           isActive: _active,
         );
@@ -119,6 +139,10 @@ class _ServiceFormState extends ConsumerState<_ServiceForm> {
           if (name != existing.name) 'name': name,
           if (category != existing.category) 'category': category,
           if (description != existing.description) 'description': description,
+          if (_tab != existing.catalogTab) 'catalog_tab': _tab.apiValue,
+          if (group != existing.repairGroup) 'repair_group': group,
+          if (image != existing.imageUrl) 'image_url': image,
+          if (badge != existing.badge) 'badge': badge,
           if (order != existing.displayOrder) 'display_order': order,
           if (_active != existing.isActive) 'is_active': _active,
         };
@@ -188,6 +212,64 @@ class _ServiceFormState extends ConsumerState<_ServiceForm> {
           decoration: const InputDecoration(
             labelText: 'Category',
             helperText: 'Groups similar services, e.g. Maintenance or Washing',
+          ),
+        ),
+        fieldGap,
+        DropdownButtonFormField<CatalogTab>(
+          key: const ValueKey('service-tab'),
+          value: _tab,
+          items: [
+            for (final tab in CatalogTab.values)
+              DropdownMenuItem(value: tab, child: Text(tab.label)),
+          ],
+          onChanged: _busy
+              ? null
+              : (value) => setState(() => _tab = value ?? CatalogTab.package),
+          decoration: const InputDecoration(
+            labelText: 'Shown under',
+            helperText: 'Which tab of the customer service screen lists it',
+          ),
+        ),
+        if (_tab == CatalogTab.repair) ...[
+          fieldGap,
+          TextFormField(
+            key: const ValueKey('service-group'),
+            controller: _group,
+            enabled: !_busy,
+            textCapitalization: TextCapitalization.words,
+            maxLength: 30,
+            decoration: const InputDecoration(
+              labelText: 'Repair group',
+              helperText: 'Brakes, Cables, Battery, Lights ...',
+            ),
+          ),
+        ],
+        fieldGap,
+        TextFormField(
+          key: const ValueKey('service-image'),
+          controller: _image,
+          enabled: !_busy,
+          keyboardType: TextInputType.url,
+          validator: (v) {
+            final text = (v ?? '').trim();
+            if (text.isEmpty) return null;
+            return text.startsWith('https://') && !text.contains(' ')
+                ? null
+                : 'Use a picture link that starts with https://';
+          },
+          decoration: const InputDecoration(
+            labelText: 'Picture link (optional)',
+          ),
+        ),
+        fieldGap,
+        TextFormField(
+          key: const ValueKey('service-badge'),
+          controller: _badge,
+          enabled: !_busy,
+          maxLength: 24,
+          decoration: const InputDecoration(
+            labelText: 'Badge (optional)',
+            helperText: 'e.g. Popular, Best value',
           ),
         ),
         fieldGap,

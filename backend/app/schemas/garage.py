@@ -23,6 +23,8 @@ class GarageSettingsOut(BaseModel):
     email: str
     address: str
     hours: str
+    # The refund policy the garage configured, shown to customers (empty = none set).
+    refund_policy: str = ""
     # Where the values come from: saved by an admin, or the server's .env.
     source: Literal["database", "environment"]
     updated_at: datetime | None = None
@@ -39,6 +41,7 @@ class GarageSettingsUpdate(BaseModel):
     email: str = ""
     address: str = ""
     hours: str = ""
+    refund_policy: str = ""
 
     @field_validator("name")
     @classmethod
@@ -78,4 +81,12 @@ class GarageSettingsUpdate(BaseModel):
         value = value.strip()
         if len(value) > 120:
             raise ValueError("Opening hours must be at most 120 characters")
+        return value
+
+    @field_validator("refund_policy")
+    @classmethod
+    def _refund_policy(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) > 1000:
+            raise ValueError("The refund policy must be at most 1000 characters")
         return value

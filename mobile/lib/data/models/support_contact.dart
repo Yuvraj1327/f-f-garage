@@ -10,6 +10,7 @@ class SupportContact {
     required this.email,
     required this.address,
     required this.hours,
+    this.refundPolicy = '',
   });
 
   /// Throws [FormatException] when a field is missing or has the wrong type.
@@ -22,6 +23,7 @@ class SupportContact {
       email: read('email'),
       address: read('address'),
       hours: read('hours'),
+      refundPolicy: read('refund_policy'),
     );
   }
 
@@ -32,6 +34,10 @@ class SupportContact {
   final String address;
   final String hours;
 
+  /// The garage's own refund policy text (empty = none configured).
+  final String refundPolicy;
+
+  bool get hasRefundPolicy => refundPolicy.isNotEmpty;
   bool get hasPhone => phone.isNotEmpty;
   bool get hasWhatsapp => whatsapp.isNotEmpty;
   bool get hasEmail => email.isNotEmpty;

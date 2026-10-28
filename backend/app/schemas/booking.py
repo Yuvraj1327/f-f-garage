@@ -15,6 +15,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validat
 from app.domain.enums import BookingStatus, ExtraChargeType, VehicleType
 from app.schemas.assignment import AdminAssignment, DriverSummary
 from app.schemas.common import Money, PatchModel, optional_text, single_line
+from app.schemas.coupon import CouponCode
 from app.schemas.payment import PaymentSummary
 from app.schemas.service_area import Pincode
 from app.schemas.tracking import TimelineEvent
@@ -52,6 +53,8 @@ class QuoteRequest(BaseModel):
 
     package_id: UUID
     extra_charge_ids: list[UUID] = Field(default_factory=list, max_length=20)
+    # A coupon the customer typed; the server checks it and works out the discount.
+    coupon_code: CouponCode | None = None
 
     @model_validator(mode="after")
     def _unique(self) -> "QuoteRequest":
@@ -141,7 +144,14 @@ class BookingQuote(BaseModel):
     package_price: Amount
     extra_charges: list[QuoteCharge]
     extra_charges_total: Amount
+    coupon_code: str | None = None
+    discount_amount: Amount = Decimal("0.00")
+    # The estimated total: package + chosen add-ons - discount.
     total_amount: Amount
+    # Collected now (advance_percent of the total) and the part paid after the service.
+    advance_percent: Amount
+    advance_amount: Amount
+    balance_after_advance: Amount
 
 
 class BookingChargeOut(BaseModel):
@@ -182,6 +192,10 @@ class BookingRecord(BaseModel):
     estimated_duration_minutes: int | None = None
     package_price: Amount
     extra_charges_total: Amount
+    coupon_code: str | None = None
+    discount_amount: Amount = Decimal("0.00")
+    advance_percent: Amount = Decimal("20.00")
+    advance_amount: Amount = Decimal("0.00")
     total_amount: Amount
     vehicle_registration: str | None = None
     vehicle_make: str | None = None
@@ -234,7 +248,12 @@ class BookingOut(BaseModel):
     slot_end: time
     package_price: Amount
     extra_charges_total: Amount
+    coupon_code: str | None = None
+    discount_amount: Amount = Decimal("0.00")
+    # The estimated total (package + add-ons - discount) and what is collected when booking.
     total_amount: Amount
+    advance_percent: Amount = Decimal("20.00")
+    advance_amount: Amount = Decimal("0.00")
     extra_charges: list[BookingChargeOut]
     vehicle_registration: str | None = None
     vehicle_make: str | None = None
@@ -254,6 +273,14 @@ class BookingOut(BaseModel):
     payment: PaymentSummary | None = None
     is_paid: bool = False
     can_pay: bool = False
+    # After the service: the bill so far (estimated total + approved extras), what has been
+    # paid and what is left. `can_pay_balance` is true only once the booking is completed.
+    approved_extras_total: Amount = Decimal("0.00")
+    pending_extras_count: int = 0
+    final_total: Amount = Decimal("0.00")
+    amount_paid: Amount = Decimal("0.00")
+    balance_due: Amount = Decimal("0.00")
+    can_pay_balance: bool = False
     # The driver, once one is assigned (a cancelled booking shows none).
     driver: DriverSummary | None = None
     # Every status the booking has been in, oldest first (single-booking views only).

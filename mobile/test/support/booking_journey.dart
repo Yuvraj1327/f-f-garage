@@ -1,3 +1,4 @@
+import 'package:ff_garage/app/router/app_routes.dart';
 import 'package:ff_garage/data/models/availability.dart';
 import 'package:ff_garage/data/models/enums.dart';
 import 'package:ff_garage/data/models/service_area.dart';
@@ -152,11 +153,13 @@ bool buttonEnabled(WidgetTester tester, String label) =>
         .onPressed !=
     null;
 
-/// Home -> Browse services -> service -> "Book this package".
+/// Home -> Browse services -> service -> add the package, then the address step.
 Future<void> startBooking(WidgetTester tester) async {
   await tapText(tester, 'Browse services');
   await tapText(tester, 'General Service');
   await tapKey(tester, 'book-p1');
+  goTo(tester, AppRoutes.bookAddress);
+  await tester.pumpAndSettle();
 }
 
 Future<void> fillAddress(

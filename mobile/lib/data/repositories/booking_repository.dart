@@ -10,10 +10,19 @@ class BookingRepository {
 
   final BookingApiService _service;
 
-  Future<BookingQuote> quote(String packageId) async {
+  /// The server's price for a package, the chosen add-ons and an optional
+  /// coupon. A coupon the server cannot use comes back as an [ApiException]
+  /// (422) whose message says why.
+  Future<BookingQuote> quote(
+    String packageId, {
+    List<String> extraChargeIds = const [],
+    String? couponCode,
+  }) async {
+    final code = couponCode?.trim();
     final json = await _service.quote({
       'package_id': packageId,
-      'extra_charge_ids': <String>[],
+      'extra_charge_ids': extraChargeIds,
+      if (code != null && code.isNotEmpty) 'coupon_code': code,
     });
     return _parse(json, BookingQuote.fromJson);
   }
@@ -25,6 +34,8 @@ class BookingRepository {
       'package_id': draft.packageId,
       if (draft.vehicleId != null) 'vehicle_id': draft.vehicleId,
       'extra_charge_ids': draft.extraChargeIds,
+      if (draft.couponCode != null && draft.couponCode!.trim().isNotEmpty)
+        'coupon_code': draft.couponCode!.trim(),
       'pincode': draft.pincode,
       'address_line': draft.addressLine,
       if (landmark != null && landmark.isNotEmpty) 'landmark': landmark,

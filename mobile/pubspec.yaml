@@ -55,5 +55,6 @@ flutter:
   assets:
     # Brand logo and onboarding hero (see assets/images)
     - assets/images/
+    - assets/images/services/
     # Public settings only (see .env.example). Create it with: cp .env.example .env
     - .env

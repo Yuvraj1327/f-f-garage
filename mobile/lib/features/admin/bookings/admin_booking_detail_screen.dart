@@ -11,6 +11,8 @@ import '../../../data/models/place.dart';
 import '../../../data/providers/data_providers.dart';
 import '../../auth/presentation/widgets/auth_widgets.dart';
 import '../../booking/presentation/booking_widgets.dart';
+import '../../booking/presentation/extra_requests_panel.dart';
+import 'admin_bill_card.dart';
 import '../../maps/location_map_card.dart';
 import '../../payment/presentation/payment_widgets.dart';
 import '../providers/admin_providers.dart';
@@ -109,6 +111,16 @@ class _AdminBookingDetailScreenState
                   onAssign: () => _assign(booking),
                   onUnassign: () => _unassign(booking),
                 ),
+                ExtraRequestsPanel(
+                  bookingId: booking.id,
+                  actor: ExtraActor.admin,
+                  canRequest: booking.status == BookingStatus.inProgress,
+                  onChanged: () {
+                    refreshAdminBooking(ref, widget.bookingId);
+                    ref.invalidate(adminBillProvider(booking.id));
+                  },
+                ),
+                AdminBillCard(bookingId: booking.id),
                 _History(bookingId: booking.id),
               ],
             ),

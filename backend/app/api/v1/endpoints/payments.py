@@ -14,6 +14,7 @@ from fastapi import APIRouter, Header, Query, Request, status
 from app.api.auth import AdminDep, CustomerDep
 from app.api.deps import PaymentServiceDep
 from app.domain.enums import PaymentStatus
+from app.schemas.billing import RefundCreate
 from app.schemas.payment import (
     AdminPaymentDetail,
     AdminPaymentPage,
@@ -192,3 +193,36 @@ def admin_get_payment(
     payment_id: UUID, _admin: AdminDep, service: PaymentServiceDep
 ) -> AdminPaymentDetail:
     return service.admin_get(payment_id)
+
+
+@admin_router.post(
+    "/{payment_id}/refunds",
+    response_model=AdminPaymentDetail,
+    status_code=status.HTTP_201_CREATED,
+    summary="Record a refund you already made in the payment gateway's dashboard",
+    description=(
+        "This application moves no money and applies no refund rule: an admin decides, refunds "
+        "in the gateway dashboard, then records it here so the customer's receipt shows it."
+    ),
+    responses={
+        **_ADMIN,
+        404: {"description": "No such payment"},
+        409: {"description": "Payment not successful, or refunds would exceed the payment"},
+    },
+)
+def admin_record_refund(
+    payment_id: UUID, payload: RefundCreate, admin: AdminDep, service: PaymentServiceDep
+) -> AdminPaymentDetail:
+    return service.admin_record_refund(admin, payment_id, payload)
+
+
+@admin_router.post(
+    "/{payment_id}/resolve-review",
+    response_model=AdminPaymentDetail,
+    summary="Mark a flagged payment as dealt with (no refund needed)",
+    responses={**_ADMIN, 404: {"description": "No such payment"}},
+)
+def admin_resolve_review(
+    payment_id: UUID, admin: AdminDep, service: PaymentServiceDep
+) -> AdminPaymentDetail:
+    return service.admin_resolve_review(admin, payment_id)

@@ -11,6 +11,7 @@ class Payment {
     required this.currency,
     required this.livemode,
     required this.createdAt,
+    this.kind = PaymentKind.advance,
     this.bookingId,
     this.gatewayOrderId,
     this.method,
@@ -23,6 +24,9 @@ class Payment {
         id: JsonReader.string(json, 'id'),
         bookingId: JsonReader.optionalString(json, 'booking_id'),
         gatewayOrderId: JsonReader.optionalString(json, 'gateway_order_id'),
+        kind: PaymentKind.fromApiValue(
+          JsonReader.optionalString(json, 'kind') ?? 'advance',
+        ),
         status: PaymentStatus.fromApiValue(JsonReader.string(json, 'status')),
         amount: JsonReader.money(json, 'amount'),
         currency: JsonReader.string(json, 'currency'),
@@ -39,6 +43,9 @@ class Payment {
   final String id;
   final String? bookingId;
   final String? gatewayOrderId;
+
+  /// The advance collected when booking, or the balance after the service.
+  final PaymentKind kind;
   final PaymentStatus status;
   final double amount;
   final String currency;

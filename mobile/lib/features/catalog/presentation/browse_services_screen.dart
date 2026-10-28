@@ -1,66 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../app/router/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/async_view.dart';
-import '../../../core/widgets/filter_pill.dart';
-import '../../../core/widgets/service_icon.dart';
 import '../../../core/widgets/skeleton.dart';
-import '../../../core/widgets/vehicle_banner.dart';
 import '../../../data/models/catalog.dart';
 import '../../../data/models/enums.dart';
+import '../../booking/presentation/cart_bar.dart';
+import '../../vehicles/presentation/vehicle_switcher.dart';
 import '../providers/catalog_providers.dart';
+import 'service_card.dart';
 
-/// "Select Service": the active services, by vehicle type, with a search box
-/// and category chips. All data comes from the catalogue API.
-class BrowseServicesScreen extends StatelessWidget {
+/// "2-Wheeler Services": the customer's vehicle, a search box and four tabs
+/// (Book a Mechanic, Service Packages, Specific Repair, Engine Repair). Every
+/// price comes from the catalogue API. A sticky bar appears once a service is
+/// added.
+class BrowseServicesScreen extends ConsumerStatefulWidget {
   const BrowseServicesScreen({super.key, this.initialQuery = ''});
 
-  /// A search typed on Home, applied to both lists.
+  /// A search typed on Home.
   final String initialQuery;
 
   @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Our services'),
-          bottom: const TabBar(
-            tabs: [Tab(text: 'Scooter'), Tab(text: 'Bike')],
-          ),
-        ),
-        body: SafeArea(
-          child: TabBarView(
-            children: [
-              _ServiceList(type: VehicleType.scooter, query: initialQuery),
-              _ServiceList(type: VehicleType.bike, query: initialQuery),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  ConsumerState<BrowseServicesScreen> createState() =>
+      _BrowseServicesScreenState();
 }
 
-class _ServiceList extends ConsumerStatefulWidget {
-  const _ServiceList({required this.type, this.query = ''});
-
-  final VehicleType type;
-  final String query;
-
-  @override
-  ConsumerState<_ServiceList> createState() => _ServiceListState();
-}
-
-class _ServiceListState extends ConsumerState<_ServiceList>
-    with AutomaticKeepAliveClientMixin {
-  late String _query = widget.query;
+class _BrowseServicesScreenState extends ConsumerState<BrowseServicesScreen> {
   late final TextEditingController _search =
-      TextEditingController(text: widget.query);
-  String? _category;
+      TextEditingController(text: widget.initialQuery);
+  late String _query = widget.initialQuery;
 
   @override
   void dispose() {
@@ -69,190 +38,255 @@ class _ServiceListState extends ConsumerState<_ServiceList>
   }
 
   @override
+  Widget build(BuildContext context) {
+    final type = ref.watch(catalogVehicleTypeProvider);
+    final services = ref.watch(browseServicesProvider(type));
+    return DefaultTabController(
+      length: CatalogTab.values.length,
+      initialIndex: CatalogTab.values.indexOf(CatalogTab.package),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('2-Wheeler Services')),
+        bottomNavigationBar: const CartBar(),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Column(
+                  children: [
+                    const VehicleSwitcher(),
+                    const SizedBox(height: 10),
+                    TextField(
+                      key: const ValueKey('service-search'),
+                      controller: _search,
+                      textInputAction: TextInputAction.search,
+                      onChanged: (v) => setState(() => _query = v),
+                      decoration: InputDecoration(
+                        hintText: 'Search services...',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _query.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Clear search',
+                                icon: const Icon(Icons.close),
+                                onPressed: () => setState(() {
+                                  _search.clear();
+                                  _query = '';
+                                }),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: [for (final tab in CatalogTab.values) Tab(text: tab.label)],
+              ),
+              Expanded(
+                child: AsyncView<List<GarageService>>(
+                  value: services,
+                  loading: const ListSkeleton(),
+                  onRetry: () => ref.invalidate(browseServicesProvider(type)),
+                  builder: (all) => TabBarView(
+                    children: [
+                      for (final tab in CatalogTab.values)
+                        _CatalogTabView(
+                          tab: tab,
+                          type: type,
+                          all: all,
+                          query: _query,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CatalogTabView extends ConsumerStatefulWidget {
+  const _CatalogTabView({
+    required this.tab,
+    required this.type,
+    required this.all,
+    required this.query,
+  });
+
+  final CatalogTab tab;
+  final VehicleType type;
+  final List<GarageService> all;
+  final String query;
+
+  @override
+  ConsumerState<_CatalogTabView> createState() => _CatalogTabViewState();
+}
+
+class _CatalogTabViewState extends ConsumerState<_CatalogTabView>
+    with AutomaticKeepAliveClientMixin {
+  String? _group;
+
+  @override
   bool get wantKeepAlive => true;
 
-  List<GarageService> _filter(List<GarageService> services) {
-    final query = _query.trim().toLowerCase();
-    return [
-      for (final service in services)
-        if ((_category == null || service.category == _category) &&
-            (query.isEmpty ||
-                service.name.toLowerCase().contains(query) ||
-                service.category.toLowerCase().contains(query) ||
-                (service.description ?? '').toLowerCase().contains(query)))
-          service,
-    ];
-  }
+  bool _matches(GarageService s, String query) =>
+      query.isEmpty ||
+      s.name.toLowerCase().contains(query) ||
+      s.category.toLowerCase().contains(query) ||
+      (s.repairGroup ?? '').toLowerCase().contains(query) ||
+      (s.description ?? '').toLowerCase().contains(query);
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final type = widget.type;
-    final value = ref.watch(browseServicesProvider(type));
-    return AsyncView<List<GarageService>>(
-      value: value,
-      loading: const ListSkeleton(),
-      onRetry: () => ref.invalidate(browseServicesProvider(type)),
-      builder: (services) {
-        if (services.isEmpty) {
-          return EmptyView(
-            icon: Icons.build_outlined,
-            message: 'No ${vehicleLabel(type).toLowerCase()} services are '
-                'available right now. Please check back soon.',
-          );
-        }
-        final categories = {for (final s in services) s.category}.toList()
-          ..sort();
-        // A category that no longer exists after a refresh falls back to All.
-        final selected = categories.contains(_category) ? _category : null;
-        final shown = _filter(services);
-        return RefreshIndicator(
-          onRefresh: () => ref.refresh(browseServicesProvider(type).future),
-          child: ListView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.all(16),
-            children: [
-              VehicleBanner(type: type),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _search,
-                textInputAction: TextInputAction.search,
-                onChanged: (v) => setState(() => _query = v),
-                decoration: const InputDecoration(
-                  hintText: 'Search services...',
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ),
-              if (categories.length > 1) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 48,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      _CategoryChip(
-                        label: 'All',
-                        selected: selected == null,
-                        onTap: () => setState(() => _category = null),
-                      ),
-                      for (final category in categories)
-                        _CategoryChip(
-                          label: category,
-                          selected: selected == category,
-                          onTap: () => setState(() => _category = category),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-              const SizedBox(height: 8),
-              if (shown.isEmpty)
-                // Not EmptyView: that scrolls itself and cannot sit in a list.
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 32),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.search_off,
-                        size: 40,
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No services match your search.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                    ],
-                  ),
-                )
-              else
-                for (final service in shown) _ServiceCard(service: service),
-            ],
-          ),
-        );
-      },
+    final query = widget.query.trim().toLowerCase();
+    final inTab = [
+      for (final s in widget.all)
+        if (s.catalogTab == widget.tab) s,
+    ];
+    if (inTab.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: () =>
+            ref.refresh(browseServicesProvider(widget.type).future),
+        child: ListView(
+          children: [
+            const SizedBox(height: 48),
+            EmptyBlock(
+              icon: Icons.build_outlined,
+              message: 'No ${widget.tab.label.toLowerCase()} services for '
+                  '${vehicleLabel(widget.type).toLowerCase()}s yet. '
+                  'Please check back soon.',
+            ),
+          ],
+        ),
+      );
+    }
+    final isRepair = widget.tab == CatalogTab.repair;
+    final groups = isRepair
+        ? ({
+            for (final s in inTab)
+              if (s.repairGroup != null) s.repairGroup!,
+          }.toList()
+          ..sort())
+        : const <String>[];
+    final selected = groups.contains(_group) ? _group : null;
+    final shown = [
+      for (final s in inTab)
+        if ((selected == null || s.repairGroup == selected) &&
+            _matches(s, query))
+          s,
+    ];
+    final list = RefreshIndicator(
+      onRefresh: () =>
+          ref.refresh(browseServicesProvider(widget.type).future),
+      child: ListView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.all(12),
+        children: [
+          if (shown.isEmpty)
+            const EmptyBlock(
+              icon: Icons.search_off,
+              message: 'No services match your search.',
+            )
+          else
+            for (final service in shown) ServiceCard(service: service),
+        ],
+      ),
+    );
+    if (!isRepair || groups.isEmpty) return list;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _GroupRail(
+          groups: groups,
+          selected: selected,
+          onSelected: (g) => setState(() => _group = g),
+        ),
+        Expanded(child: list),
+      ],
     );
   }
 }
 
-class _CategoryChip extends StatelessWidget {
-  const _CategoryChip({
-    required this.label,
+/// The left rail of repair categories (Brakes, Cables, Battery ...).
+class _GroupRail extends StatelessWidget {
+  const _GroupRail({
+    required this.groups,
     required this.selected,
-    required this.onTap,
+    required this.onSelected,
   });
 
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
+  final List<String> groups;
+  final String? selected;
+  final ValueChanged<String?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    Widget item(String label, bool on, VoidCallback onTap) => InkWell(
+          key: ValueKey('group-$label'),
+          onTap: onTap,
+          child: Container(
+            width: 88,
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+            decoration: BoxDecoration(
+              color: on ? scheme.primaryContainer : null,
+              border: Border(
+                left: BorderSide(
+                  width: 3,
+                  color: on ? scheme.primary : Colors.transparent,
+                ),
+              ),
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: on ? FontWeight.w700 : FontWeight.w500,
+                    color: on ? scheme.primary : scheme.onSurface,
+                  ),
+            ),
+          ),
+        );
+    return SizedBox(
+      width: 88,
+      child: ListView(
+        children: [
+          item('All', selected == null, () => onSelected(null)),
+          for (final group in groups)
+            item(group, selected == group, () => onSelected(group)),
+        ],
+      ),
+    );
+  }
+}
+
+/// A centred icon and message that can sit inside a list.
+class EmptyBlock extends StatelessWidget {
+  const EmptyBlock({super.key, required this.icon, required this.message});
+
+  final IconData icon;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterPill(label: label, selected: selected, onSelected: onTap),
-    );
-  }
-}
-
-class _ServiceCard extends StatelessWidget {
-  const _ServiceCard({required this.service});
-
-  final GarageService service;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final from = service.startingPrice;
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.push(AppRoutes.serviceDetail(service.id)),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ServiceThumb(category: service.category),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(service.name, style: textTheme.titleMedium),
-                    Text(service.category, style: textTheme.bodySmall),
-                    if (service.description != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        service.description!,
-                        style: textTheme.bodySmall,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (from != null)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('from', style: textTheme.bodySmall),
-                      Text(
-                        formatMoney(from),
-                        style: textTheme.titleMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              const Icon(Icons.chevron_right),
-            ],
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+      child: Column(
+        children: [
+          Icon(icon, size: 40, color: Theme.of(context).colorScheme.outline),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyLarge,
           ),
-        ),
+        ],
       ),
     );
   }

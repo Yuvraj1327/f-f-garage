@@ -32,6 +32,7 @@ abstract final class AppRoutes {
   static String serviceDetail(String id) => '/home/services/$id';
 
   // Booking flow (a customer chooses a package first, then these three steps)
+  static const String checkout = '/home/checkout';
   static const String bookAddress = '/home/book-address';
   static const String bookSchedule = '/home/book-schedule';
   static const String bookSummary = '/home/book-summary';
@@ -74,6 +75,7 @@ abstract final class AppRoutes {
       '/admin/services/$serviceId/packages/$packageId';
   static String adminCharge(String serviceId, String chargeId) =>
       '/admin/services/$serviceId/charges/$chargeId';
+  static const String adminCoupons = '/admin/coupons';
   static const String adminAreas = '/admin/areas';
   static const String adminAvailability = '/admin/availability';
 

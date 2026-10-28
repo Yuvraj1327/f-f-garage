@@ -313,7 +313,7 @@ def test_cancel_open_only_touches_pending_rows() -> None:
     assert SupabasePaymentRepository(Client([])).cancel_open(uuid.uuid4()) is None
 
 
-def test_summaries_prefer_the_successful_payment_then_the_latest() -> None:
+def test_for_bookings_groups_the_attempts_newest_first() -> None:
     b1, b2 = uuid.uuid4(), uuid.uuid4()
     rows = [  # newest first, as the query orders them
         payment_row(booking_id=str(b1), status="failed", id=str(uuid.uuid4())),
@@ -327,10 +327,10 @@ def test_summaries_prefer_the_successful_payment_then_the_latest() -> None:
         payment_row(booking_id=str(b2), status="pending", id=str(uuid.uuid4())),
         payment_row(booking_id=str(b2), status="failed", id=str(uuid.uuid4())),
     ]
-    out = SupabasePaymentRepository(Client(rows)).summaries_for([b1, b2])
-    assert out[b1].status == PaymentStatus.SUCCESSFUL
-    assert out[b2].status == PaymentStatus.PENDING
-    assert SupabasePaymentRepository(Client([])).summaries_for([]) == {}
+    out = SupabasePaymentRepository(Client(rows)).for_bookings([b1, b2])
+    assert [p.status for p in out[b1]] == [PaymentStatus.FAILED, PaymentStatus.SUCCESSFUL]
+    assert [p.status for p in out[b2]] == [PaymentStatus.PENDING, PaymentStatus.FAILED]
+    assert SupabasePaymentRepository(Client([])).for_bookings([]) == {}
 
 
 def test_search_builds_the_expected_filters_and_returns_the_count() -> None:

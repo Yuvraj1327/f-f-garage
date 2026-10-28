@@ -1,9 +1,12 @@
+import 'package:ff_garage/app/router/app_routes.dart';
 import 'package:ff_garage/core/widgets/brand_logo.dart';
+import 'package:ff_garage/core/widgets/service_icon.dart';
 import 'package:ff_garage/core/widgets/vehicle_banner.dart';
 import 'package:ff_garage/data/models/enums.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/fakes_catalog.dart';
 import '../support/pump_app.dart';
 
 String _asset(WidgetTester tester, Finder f) =>
@@ -58,16 +61,15 @@ void main() {
     expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
   });
 
-  testWidgets('browse services shows the scooter then the bike picture',
+  testWidgets('browse services lists the 4 tabs and a vehicle toggle',
       (tester) async {
     await AppHarness(role: UserRole.customer).pump(tester);
     await tapText(tester, 'Browse services');
-    expect(_asset(tester, find.byKey(const ValueKey('vehicle-scooter'))),
-        BrandAssets.scooter);
-    await tester.tap(find.text('Bike'));
-    await tester.pumpAndSettle();
-    expect(_asset(tester, find.byKey(const ValueKey('vehicle-bike'))),
-        BrandAssets.bike);
+    expect(find.text('2-Wheeler Services'), findsOneWidget);
+    expect(find.byKey(const ValueKey('vehicle-type-toggle')), findsOneWidget);
+    expect(find.text('Book a Mechanic'), findsWidgets);
+    expect(find.text('Service Packages'), findsWidgets);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('the vehicle picture keeps its 16:9 shape', (tester) async {
@@ -85,5 +87,69 @@ void main() {
     expect(BrandAssets.homeBanner, 'assets/images/home_banner.jpg');
     expect(BrandAssets.promoBike, 'assets/images/promo_bike_service.jpg');
     expect(BrandAssets.promoScooter, 'assets/images/promo_scooter_service.jpg');
+  });
+
+  group('service pictures and icons', () {
+    test('the three headline services get their own picture', () {
+      expect(serviceAssetFor('Book a Mechanic')!.square, contains('book_mechanic'));
+      expect(serviceAssetFor('Check My Vehicle')!.banner, contains('check_vehicle'));
+      expect(serviceAssetFor('Mechanic Consultation')!.square,
+          contains('mechanic_consultation'));
+      expect(serviceAssetFor('Brake Pad Replacement'), isNull);
+    });
+
+    test('every part category has its own icon', () {
+      final icons = {
+        for (final c in [
+          'Engine', 'Brakes', 'Battery', 'Chain', 'Cables', 'Lights', 'Tyres',
+          'Filters', 'Lubricants', 'Electrical',
+        ])
+          c: serviceIconFor(c),
+      };
+      expect(icons.values.toSet().length, icons.length);
+      expect(serviceIconFor('Other Repairs'), Icons.build_outlined);
+    });
+
+    testWidgets('a headline service shows a square picture in the list',
+        (tester) async {
+      final harness = AppHarness(
+        role: UserRole.customer,
+        catalog: FakeCatalogRepository([service(name: 'Book a Mechanic')]),
+      );
+      await harness.pump(tester);
+      goTo(tester, AppRoutes.browseServices);
+      await tester.pumpAndSettle();
+      final image = find.byKey(const ValueKey('asset-image-s1'));
+      expect(image, findsOneWidget);
+      final size = tester.getSize(image);
+      expect(size.width, size.height);
+    });
+
+    testWidgets('other services show the circular category icon',
+        (tester) async {
+      await AppHarness(role: UserRole.customer).pump(tester);
+      goTo(tester, AppRoutes.browseServices);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('asset-image-s1')), findsNothing);
+      expect(find.byType(ServiceThumb), findsWidgets);
+    });
+
+    testWidgets('opening a service shows the full-width banner first',
+        (tester) async {
+      final harness = AppHarness(
+        role: UserRole.customer,
+        catalog: FakeCatalogRepository([service(name: 'Check My Vehicle')]),
+      );
+      await harness.pump(tester);
+      goTo(tester, AppRoutes.serviceDetail('s1'));
+      await tester.pumpAndSettle();
+      final banner = find.byKey(const ValueKey('service-banner'));
+      expect(banner, findsOneWidget);
+      final width = tester.getSize(banner).width;
+      expect(width, tester.view.physicalSize.width / tester.view.devicePixelRatio);
+      expect(find.byKey(const ValueKey('detail-name')), findsOneWidget);
+      expect(find.byKey(const ValueKey('detail-price')), findsOneWidget);
+      expect(find.byKey(const ValueKey('detail-duration')), findsOneWidget);
+    });
   });
 }

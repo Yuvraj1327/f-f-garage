@@ -5,8 +5,10 @@ import '../../../core/network/api_exception.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/vehicle.dart';
 import '../../../data/providers/data_providers.dart';
+import '../../../data/vehicle_catalog.dart';
 import '../../auth/presentation/widgets/auth_widgets.dart';
 import '../providers/vehicle_providers.dart';
+import 'option_picker.dart';
 
 /// Add a vehicle ([vehicleId] null) or edit a saved one. Two-wheelers only.
 class VehicleFormScreen extends ConsumerWidget {
@@ -63,6 +65,68 @@ class _VehicleFormState extends ConsumerState<_VehicleForm> {
       TextEditingController(text: widget.existing?.nickname ?? '');
   bool _busy = false;
   String? _error;
+
+  // Typing by hand instead of picking from the list. A saved vehicle whose
+  // make or model is not in the list opens in manual mode.
+  late bool _makeManual = _initialMakeManual();
+  late bool _modelManual = _initialModelManual();
+
+  bool _initialMakeManual() {
+    final v = widget.existing;
+    return v != null && knownMake(v.make) == null;
+  }
+
+  bool _initialModelManual() {
+    final v = widget.existing;
+    if (v == null) return false;
+    final make = knownMake(v.make);
+    return make == null || !vehicleModels(make, v.type).contains(v.model);
+  }
+
+  String? get _listedMake => _makeManual ? null : knownMake(_make.text);
+
+  void _pickMake(PickResult result) {
+    setState(() {
+      if (result.manual) {
+        _makeManual = true;
+        _modelManual = true;
+        _make.clear();
+        _model.clear();
+        return;
+      }
+      _make.text = result.value!;
+      _makeManual = false;
+      // Keep the model only when it still belongs to this make.
+      if (!vehicleModels(result.value!, _type).contains(_model.text)) {
+        _model.clear();
+      }
+      _modelManual = false;
+    });
+  }
+
+  void _pickModel(PickResult result) {
+    setState(() {
+      if (result.manual) {
+        _modelManual = true;
+        _model.clear();
+      } else {
+        _model.text = result.value!;
+        _modelManual = false;
+      }
+    });
+  }
+
+  void _changeType(VehicleType type) {
+    setState(() {
+      _type = type;
+      final make = _listedMake;
+      if (make != null &&
+          !_modelManual &&
+          !vehicleModels(make, type).contains(_model.text)) {
+        _model.clear();
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -131,7 +195,7 @@ class _VehicleFormState extends ConsumerState<_VehicleForm> {
           color: selected ? scheme.onPrimary : scheme.outline,
         ),
         label: Text(label),
-        onSelected: _busy ? null : (_) => setState(() => _type = type),
+        onSelected: _busy ? null : (_) => _changeType(type),
       );
     }
 
@@ -190,32 +254,90 @@ class _VehicleFormState extends ConsumerState<_VehicleForm> {
             ),
           ),
           const SizedBox(height: 16),
-          TextFormField(
-            key: const ValueKey('vehicle-make'),
-            controller: _make,
-            enabled: !_busy,
-            textCapitalization: TextCapitalization.words,
-            textInputAction: TextInputAction.next,
-            maxLength: 40,
-            validator: (v) {
-              final t = (v ?? '').trim();
-              return t.length < 2 ? 'Enter the make, e.g. Honda' : null;
-            },
-            decoration: const InputDecoration(labelText: 'Vehicle make'),
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            key: const ValueKey('vehicle-model'),
-            controller: _model,
-            enabled: !_busy,
-            textCapitalization: TextCapitalization.words,
-            textInputAction: TextInputAction.next,
-            maxLength: 40,
-            validator: (v) =>
-                (v ?? '').trim().isEmpty ? 'Enter the model, e.g. Activa' : null,
-            decoration: const InputDecoration(labelText: 'Vehicle model'),
-          ),
-          const SizedBox(height: 8),
+          if (_makeManual)
+            TextFormField(
+              key: const ValueKey('vehicle-make'),
+              controller: _make,
+              enabled: !_busy,
+              textCapitalization: TextCapitalization.words,
+              textInputAction: TextInputAction.next,
+              maxLength: 40,
+              validator: (v) {
+                final t = (v ?? '').trim();
+                return t.length < 2 ? 'Enter the make, e.g. Honda' : null;
+              },
+              decoration: InputDecoration(
+                labelText: 'Vehicle make',
+                suffixIcon: TextButton(
+                  key: const ValueKey('make-use-list'),
+                  onPressed: _busy
+                      ? null
+                      : () => setState(() {
+                            _makeManual = false;
+                            _modelManual = false;
+                            _make.clear();
+                            _model.clear();
+                          }),
+                  child: const Text('Pick from list'),
+                ),
+              ),
+            )
+          else
+            OptionPickerField(
+              key: const ValueKey('vehicle-make'),
+              controller: _make,
+              label: 'Vehicle make',
+              sheetTitle: 'Select vehicle make',
+              options: vehicleMakes(),
+              manualLabel: "Can't find vehicle make? Enter manually",
+              enabled: !_busy,
+              onPicked: _pickMake,
+              validator: (v) =>
+                  (v ?? '').trim().isEmpty ? 'Select the vehicle make' : null,
+            ),
+          const SizedBox(height: 16),
+          if (_modelManual)
+            TextFormField(
+              key: const ValueKey('vehicle-model'),
+              controller: _model,
+              enabled: !_busy,
+              textCapitalization: TextCapitalization.words,
+              textInputAction: TextInputAction.next,
+              maxLength: 40,
+              validator: (v) => (v ?? '').trim().isEmpty
+                  ? 'Enter the model, e.g. Activa'
+                  : null,
+              decoration: InputDecoration(
+                labelText: 'Vehicle model',
+                suffixIcon: _listedMake == null
+                    ? null
+                    : TextButton(
+                        key: const ValueKey('model-use-list'),
+                        onPressed: _busy
+                            ? null
+                            : () => setState(() {
+                                  _modelManual = false;
+                                  _model.clear();
+                                }),
+                        child: const Text('Pick from list'),
+                      ),
+              ),
+            )
+          else
+            OptionPickerField(
+              key: const ValueKey('vehicle-model'),
+              controller: _model,
+              label: 'Vehicle model',
+              sheetTitle: 'Select vehicle model',
+              options: vehicleModels(_listedMake ?? '', _type),
+              manualLabel: "Can't find model? Enter manually",
+              enabled: !_busy && _listedMake != null,
+              helper: _listedMake == null ? 'Select the make first' : null,
+              onPicked: _pickModel,
+              validator: (v) =>
+                  (v ?? '').trim().isEmpty ? 'Select the vehicle model' : null,
+            ),
+          const SizedBox(height: 16),
           TextFormField(
             key: const ValueKey('vehicle-nickname'),
             controller: _nickname,
@@ -240,7 +362,7 @@ class _VehicleFormState extends ConsumerState<_VehicleForm> {
           ),
           const SizedBox(height: 16),
           BusyButton(
-            label: widget.existing == null ? 'Save vehicle' : 'Save changes',
+            label: widget.existing == null ? 'Confirm vehicle' : 'Save changes',
             busy: _busy,
             onPressed: _save,
           ),

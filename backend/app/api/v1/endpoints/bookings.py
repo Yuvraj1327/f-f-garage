@@ -45,9 +45,11 @@ _ADMIN = {
     responses={**_AUTH, 404: {"description": "Package or service not available"}},
 )
 def quote_booking(
-    payload: QuoteRequest, _customer: CustomerDep, service: BookingServiceDep
+    payload: QuoteRequest, customer: CustomerDep, service: BookingServiceDep
 ) -> BookingQuote:
-    return service.quote(payload)
+    """Also applies a coupon when `coupon_code` is sent (422 with the reason when it cannot
+    be used) and shows the advance collected when booking."""
+    return service.quote(payload, customer)
 
 
 @router.post(

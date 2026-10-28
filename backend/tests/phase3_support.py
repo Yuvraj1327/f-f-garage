@@ -13,11 +13,14 @@ from app.api.deps import (
     get_booking_repository,
     get_booking_service,
     get_catalog_repository,
+    get_coupon_repository,
+    get_extra_request_repository,
     get_garage_settings_repository,
     get_notification_repository,
     get_payment_gateway,
     get_payment_repository,
     get_profile_repository,
+    get_refund_repository,
     get_service_area_repository,
     get_tracking_repository,
     get_vehicle_repository,
@@ -26,9 +29,11 @@ from app.domain.enums import UserRole
 from app.main import create_app
 from app.services.availability_service import AvailabilityService
 from app.services.booking_service import BookingService
+from app.services.coupon_service import CouponService
 from tests.conftest import CONFIGURED_SUPABASE, make_settings
 from tests.fakes import FakeProfileRepository, make_profile
 from tests.fakes_assignment import FakeAssignmentRepository
+from tests.fakes_billing import FakeCoupons, FakeExtraRequests, FakeRefunds
 from tests.fakes_booking import FakeBookingRepository
 from tests.fakes_catalog import (
     FakeAvailabilityRepository,
@@ -68,7 +73,13 @@ class Ctx:
         self.bookings = FakeBookingRepository(self.availability)
         self.payments = FakePaymentRepository(self.bookings)
         self.gateway = FakeGateway()
+        self.coupons = FakeCoupons()
+        self.extras = FakeExtraRequests()
+        self.refunds = FakeRefunds(self.payments)
+        self.bookings.coupons = self.coupons
+        self.bookings.on_cancelled.append(self.extras.withdraw_open)
         self.assignments = FakeAssignmentRepository(self.bookings, self.profiles, self.payments)
+        self.assignments.extras = self.extras
         self.garage = FakeGarageSettings()
         self.vehicles = FakeVehicles()
         self.tracking = FakeTracking(self.bookings, self.assignments, self.payments, self.profiles)
@@ -86,6 +97,9 @@ class Ctx:
         self.clock = lambda tz: NOW.astimezone(tz)
         app.dependency_overrides[get_booking_repository] = lambda: self.bookings
         app.dependency_overrides[get_payment_repository] = lambda: self.payments
+        app.dependency_overrides[get_coupon_repository] = lambda: self.coupons
+        app.dependency_overrides[get_extra_request_repository] = lambda: self.extras
+        app.dependency_overrides[get_refund_repository] = lambda: self.refunds
         app.dependency_overrides[get_assignment_repository] = lambda: self.assignments
         app.dependency_overrides[get_tracking_repository] = lambda: self.tracking
         app.dependency_overrides[get_notification_repository] = lambda: self.tracking
@@ -104,6 +118,8 @@ class Ctx:
             profiles=self.profiles,
             tracking=self.tracking,
             vehicles=self.vehicles,
+            coupons=CouponService(self.coupons),
+            extras=self.extras,
         )
         self.client = TestClient(app)
         self.as_admin = headers_for(self.admin)

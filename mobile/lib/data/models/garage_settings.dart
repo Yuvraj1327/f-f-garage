@@ -10,6 +10,7 @@ class GarageSettings {
     required this.address,
     required this.hours,
     required this.fromDatabase,
+    this.refundPolicy = '',
   });
 
   /// Throws [FormatException] when a field is missing or has the wrong type.
@@ -23,6 +24,7 @@ class GarageSettings {
       address: read('address'),
       hours: read('hours'),
       fromDatabase: json['source'] == 'database',
+      refundPolicy: read('refund_policy'),
     );
   }
 
@@ -32,6 +34,10 @@ class GarageSettings {
   final String email;
   final String address;
   final String hours;
+
+  /// Shown to customers on the checkout and receipts. Refunds are decided by an
+  /// admin one by one; this text only tells customers how.
+  final String refundPolicy;
 
   /// False while the values still come from the server's `.env` defaults (an
   /// administrator has not saved anything yet).

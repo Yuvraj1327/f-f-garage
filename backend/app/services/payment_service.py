@@ -2,8 +2,9 @@
 
 The rules this module enforces:
 
-  * The amount is always the booking's own total, read on the server. The app never
-    sends an amount.
+  * The amount is always worked out on the server. The app never sends one. When booking it
+    is the ADVANCE (a share of the estimated total); after the service it is the BALANCE
+    (the final bill, including extra charges the customer approved, minus what was paid).
   * Nothing the app reports is believed. A checkout result is accepted only after the
     signature is recomputed with the secret key AND the gateway confirms the payment
     (order, amount, currency, captured). Webhooks are accepted only with a valid
@@ -18,6 +19,7 @@ import json
 import logging
 from collections.abc import Callable
 from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -31,10 +33,14 @@ from app.core.errors import (
     UnprocessableError,
 )
 from app.db.booking_repository import BookingRepository
+from app.db.extra_request_repository import ExtraRequestRepository
 from app.db.payment_repository import AppliedEvent, PaymentRepository
+from app.db.refund_repository import RefundRepository
+from app.domain import billing
 from app.domain import booking as booking_rules
 from app.domain import payment as rules
 from app.domain.enums import BookingStatus, PaymentStatus
+from app.schemas.billing import RefundCreate
 from app.schemas.booking import BookingRecord
 from app.schemas.payment import (
     AdminPaymentDetail,
@@ -49,6 +55,7 @@ from app.schemas.payment import (
     WebhookAck,
 )
 from app.schemas.profile import ProfileOut
+from app.services.billing_service import successful_total
 from app.services.payment_gateway import GatewayPayment, PaymentGateway
 
 logger = logging.getLogger(__name__)
@@ -65,10 +72,12 @@ def payment_out(record: PaymentRecord) -> PaymentOut:
         booking_id=record.booking_id,
         provider=record.provider,
         gateway_order_id=record.provider_order_id,
+        kind=record.kind,
         status=record.status,
         amount=record.amount,
         currency=record.currency,
         method=record.method,
+        receipt=record.receipt,
         transaction_id=record.provider_payment_id,
         paid_at=record.paid_at,
         failure_reason=record.failure_reason,
@@ -81,7 +90,6 @@ def admin_payment_out(record: PaymentRecord) -> AdminPaymentOut:
     return AdminPaymentOut(
         **payment_out(record).model_dump(),
         customer_id=record.customer_id,
-        receipt=record.receipt,
         needs_review=record.needs_review,
         review_reason=record.review_reason,
         updated_at=record.updated_at,
@@ -96,7 +104,11 @@ class PaymentService:
         gateway: PaymentGateway | None,
         settings: Settings,
         clock: Callable[[], datetime] | None = None,
+        extras: ExtraRequestRepository | None = None,
+        refunds: RefundRepository | None = None,
     ) -> None:
+        self._extras = extras
+        self._refunds = refunds
         self._payments = payments
         self._bookings = bookings
         self._gateway = gateway
@@ -130,18 +142,29 @@ class PaymentService:
             currency=record.currency,
             name=self._settings.payment_checkout_name,
             description=f"{booking_rules.booking_code(booking.booking_number)} - "
-            f"{booking.service_name} ({booking.package_name})",
+            f"{booking.service_name} ({booking.package_name})"
+            f" - {'balance' if record.kind == 'balance' else 'advance'}",
             prefill_name=customer.full_name,
             prefill_contact=customer.phone,
             prefill_email=customer.email,
             mode="live" if self._settings.payments_live else "test",
         )
 
-    # ---- Customer: start a payment -------------------------------------------------------
-    def initiate(self, customer: ProfileOut, booking_id: UUID) -> PaymentInitiated:
-        gateway = self._require_gateway()
-        booking = self._owned_booking(customer, booking_id)
-        existing = self._payments.list_for_booking(booking.id)
+    def _what_to_collect(
+        self, booking: BookingRecord, existing: list[PaymentRecord]
+    ) -> tuple[str, Decimal]:
+        """('advance', amount) when booking, ('balance', amount) after the service. Raises
+        409/422 when there is nothing to collect right now."""
+        paid = successful_total(existing)
+        if booking.status == BookingStatus.COMPLETED:
+            approved = (
+                self._extras.summaries([booking.id]).get(booking.id) if self._extras else None
+            )
+            extras_total = approved.approved_total if approved else billing.ZERO
+            due = billing.balance_remaining(booking.total_amount + extras_total, paid)
+            if due <= 0:
+                raise ConflictError("This booking is already paid")
+            return "balance", due
         if any(p.status == PaymentStatus.SUCCESSFUL for p in existing):
             raise ConflictError("This booking is already paid")
         if booking.status != BookingStatus.PENDING_PAYMENT:
@@ -150,9 +173,17 @@ class PaymentService:
                 if booking.status == BookingStatus.CANCELLED
                 else "This booking is not waiting for payment"
             )
-        amount = booking.total_amount
+        amount = billing.advance_due(booking.advance_amount, booking.total_amount)
         if amount <= 0:
             raise UnprocessableError("There is nothing to pay for this booking")
+        return "advance", amount
+
+    # ---- Customer: start a payment -------------------------------------------------------
+    def initiate(self, customer: ProfileOut, booking_id: UUID) -> PaymentInitiated:
+        gateway = self._require_gateway()
+        booking = self._owned_booking(customer, booking_id)
+        existing = self._payments.list_for_booking(booking.id)
+        kind, amount = self._what_to_collect(booking, existing)
 
         # Reuse a recent, unfinished attempt for the same amount: two taps (or two
         # devices) never create two live orders.
@@ -161,7 +192,12 @@ class PaymentService:
             fresh = self._clock() - open_attempt.created_at < timedelta(
                 minutes=self._settings.payment_attempt_reuse_minutes
             )
-            if fresh and open_attempt.amount == amount and open_attempt.provider_order_id:
+            if (
+                fresh
+                and open_attempt.amount == amount
+                and open_attempt.kind == kind
+                and open_attempt.provider_order_id
+            ):
                 return PaymentInitiated(
                     payment=payment_out(open_attempt),
                     checkout=self._checkout(open_attempt, booking, customer),
@@ -170,11 +206,12 @@ class PaymentService:
                 raise ConflictError("A payment for this booking just changed. Please try again.")
 
         code = booking_rules.booking_code(booking.booking_number)
+        receipt = code if kind == "advance" else f"{code}-B"
         order = gateway.create_order(
             amount_paise=rules.to_paise(amount),
             currency=CURRENCY,
-            receipt=code,
-            notes={"booking_id": str(booking.id), "booking_code": code},
+            receipt=receipt,
+            notes={"booking_id": str(booking.id), "booking_code": code, "kind": kind},
         )
         try:
             record = self._payments.create_attempt(
@@ -183,9 +220,10 @@ class PaymentService:
                     "customer_id": str(customer.id),
                     "provider": PROVIDER,
                     "provider_order_id": order.id,
+                    "kind": kind,
                     "amount": str(amount),
                     "currency": CURRENCY,
-                    "receipt": code,
+                    "receipt": receipt,
                     "livemode": self._settings.payments_live,
                 }
             )
@@ -428,5 +466,40 @@ class PaymentService:
         if record is None:
             raise NotFoundError("Payment not found")
         return AdminPaymentDetail(
-            **admin_payment_out(record).model_dump(), events=self._payments.events_for(record.id)
+            **admin_payment_out(record).model_dump(),
+            events=self._payments.events_for(record.id),
+            refunds=self._refunds.list_for_payment(record.id) if self._refunds else [],
         )
+
+    def admin_record_refund(
+        self, admin: ProfileOut, payment_id: UUID, payload: RefundCreate
+    ) -> AdminPaymentDetail:
+        """Records a refund the admin already made in the gateway dashboard. The app moves no
+        money and applies no refund rule of its own."""
+        if self._refunds is None:
+            raise ServiceUnavailableError("Refunds are not available")
+        outcome = self._refunds.record(payment_id, payload.amount, payload.note, admin.id)
+        match outcome.result:
+            case "recorded":
+                logger.info(
+                    "admin %s recorded a refund of %s on payment %s",
+                    admin.id,
+                    payload.amount,
+                    payment_id,
+                )
+            case "payment_not_found":
+                raise NotFoundError("Payment not found")
+            case "payment_not_successful":
+                raise ConflictError("Only a payment that went through can be refunded")
+            case "exceeds_payment":
+                raise ConflictError("The refunds would add up to more than the payment")
+            case other:
+                raise ConflictError(f"The refund could not be recorded ({other})")
+        return self.admin_get(payment_id)
+
+    def admin_resolve_review(self, admin: ProfileOut, payment_id: UUID) -> AdminPaymentDetail:
+        """The admin looked at a flagged payment and decided nothing more is needed."""
+        if self._payments.resolve_review(payment_id) is None:
+            raise NotFoundError("Payment not found")
+        logger.info("admin %s resolved the review of payment %s", admin.id, payment_id)
+        return self.admin_get(payment_id)

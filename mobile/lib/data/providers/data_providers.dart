@@ -5,6 +5,7 @@ import '../repositories/admin_booking_repository.dart';
 import '../repositories/admin_driver_repository.dart';
 import '../repositories/auth_repository.dart';
 import '../repositories/availability_repository.dart';
+import '../repositories/billing_repository.dart';
 import '../repositories/booking_repository.dart';
 import '../repositories/catalog_repository.dart';
 import '../repositories/driver_work_repository.dart';
@@ -20,6 +21,7 @@ import '../repositories/vehicle_repository.dart';
 import '../services/admin_booking_api_service.dart';
 import '../services/admin_driver_api_service.dart';
 import '../services/availability_api_service.dart';
+import '../services/billing_api_service.dart';
 import '../services/booking_api_service.dart';
 import '../services/catalog_api_service.dart';
 import '../services/checkout_launcher.dart';
@@ -79,6 +81,10 @@ final availabilityRepositoryProvider = Provider<AvailabilityRepository>(
 
 final bookingRepositoryProvider = Provider<BookingRepository>(
   (ref) => BookingRepository(BookingApiService(ref.watch(apiClientProvider))),
+);
+
+final billingRepositoryProvider = Provider<BillingRepository>(
+  (ref) => BillingRepository(BillingApiService(ref.watch(apiClientProvider))),
 );
 
 final paymentRepositoryProvider = Provider<PaymentRepository>(

@@ -105,5 +105,28 @@ def test_dart_enum_matches_sql(name: str) -> None:
     assert dart_enums().get(name) == sql_enums()[name]
 
 
+# Dart enums for text columns guarded by CHECK constraints (not SQL enum types). Their values
+# must appear in the migration that defines the column.
+CHECKED_TEXT_ENUMS = {
+    "CatalogTab": ["mechanic", "package", "repair", "engine"],
+    "PartsPolicy": ["service_only", "parts_included", "parts_extra"],
+    "ExtraStatus": ["proposed", "approved", "declined", "withdrawn"],
+    "PaymentKind": ["advance", "balance"],
+}
+
+
 def test_no_dart_enum_is_missing_from_sql() -> None:
-    assert set(dart_enums()) == set(sql_enums())
+    assert set(dart_enums()) - set(CHECKED_TEXT_ENUMS) == set(sql_enums())
+
+
+@pytest.mark.parametrize(("name", "values"), sorted(CHECKED_TEXT_ENUMS.items()))
+def test_text_column_enums_match_dart_and_the_check_constraints(
+    name: str, values: list[str]
+) -> None:
+    source = DART_ENUMS.read_text()
+    block = re.search(rf"enum\s+{name}\b[^{{]*\{{(.*?);", source, re.S)
+    assert block, f"{name} not found in enums.dart"
+    assert re.findall(r"\w+\('([a-z_]+)'", block.group(1)) == values
+    sql = "\n".join(m.read_text() for m in MIGRATIONS)
+    for value in values:
+        assert f"'{value}'" in sql, f"{value!r} is not in any migration"

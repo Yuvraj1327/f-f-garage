@@ -8,6 +8,7 @@ slot, no duplicate, no illegal status change) are enforced again by the database
 
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from typing import Any
@@ -23,14 +24,17 @@ from app.core.errors import (
 from app.db.assignment_repository import AssignmentRepository
 from app.db.booking_repository import BookingRepository
 from app.db.catalog_repository import CatalogRepository
+from app.db.extra_request_repository import ExtraRequestRepository
 from app.db.payment_repository import PaymentRepository
 from app.db.profile_repository import ProfileRepository
 from app.db.service_area_repository import ServiceAreaRepository
 from app.db.tracking_repository import TrackingRepository
 from app.db.vehicle_repository import VehicleRepository
+from app.domain import billing
 from app.domain import booking as rules
 from app.domain.enums import BookingStatus, PaymentStatus, VehicleType
 from app.schemas.assignment import AdminAssignment, AssignmentRecord, DriverSummary
+from app.schemas.billing import ExtrasSummary
 from app.schemas.booking import (
     AdminBookingOut,
     AdminBookingPage,
@@ -48,6 +52,8 @@ from app.schemas.catalog import ExtraChargeOut, PackageOut, ServiceOut
 from app.schemas.payment import PaymentRecord, PaymentSummary
 from app.schemas.profile import ProfileOut
 from app.services.availability_service import AvailabilityService
+from app.services.billing_service import successful_total
+from app.services.coupon_service import CouponService
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +61,18 @@ _NOT_AVAILABLE = "This service is not available right now"
 _CENT = Decimal("0.01")
 
 
+@dataclass
+class _Facts:
+    """What the views of a page of bookings need besides the bookings themselves: their
+    payments and the totals of their extra-charge requests (one query each per page)."""
+
+    payments: dict[UUID, list[PaymentRecord]] = field(default_factory=dict)
+    extras: dict[UUID, ExtrasSummary] = field(default_factory=dict)
+
+
 class _Priced:
-    """The server's own pricing of a package plus the chosen add-ons."""
+    """The server's own pricing of a package plus the chosen add-ons, the coupon discount
+    and the advance."""
 
     def __init__(
         self,
@@ -64,6 +80,7 @@ class _Priced:
         package: PackageOut,
         charges: list[ExtraChargeOut],
         chosen: set[UUID],
+        advance_percent: Decimal,
     ) -> None:
         self.service = service
         self.package = package
@@ -74,7 +91,18 @@ class _Priced:
             (c.amount.quantize(_CENT) for c in charges if c.id in chosen and c.amount is not None),
             Decimal("0.00"),
         )
-        self.total = self.package_price + self.extra_total
+        self.subtotal = self.package_price + self.extra_total
+        self.advance_percent = advance_percent
+        self.coupon_code: str | None = None
+        self.discount = billing.ZERO
+        self.total = self.subtotal
+        self.advance = billing.advance_for(self.total, advance_percent)
+
+    def apply_discount(self, code: str, discount: Decimal) -> None:
+        self.coupon_code = code
+        self.discount = discount
+        self.total = self.subtotal - discount
+        self.advance = billing.advance_for(self.total, self.advance_percent)
 
 
 class BookingService:
@@ -91,7 +119,11 @@ class BookingService:
         profiles: ProfileRepository | None = None,
         tracking: TrackingRepository | None = None,
         vehicles: VehicleRepository | None = None,
+        coupons: CouponService | None = None,
+        extras: ExtraRequestRepository | None = None,
     ) -> None:
+        self._coupons = coupons
+        self._extras = extras
         self._vehicles = vehicles
         self._tracking = tracking
         self._payments = payments
@@ -112,7 +144,7 @@ class BookingService:
         return datetime.combine(day, start, tzinfo=self._tz)
 
     # ---- Pricing -----------------------------------------------------------------------
-    def _price(self, request: QuoteRequest) -> _Priced:
+    def _price(self, request: QuoteRequest, customer_id: UUID | None) -> _Priced:
         package = self._catalog.get_package(request.package_id)
         service = self._catalog.get_service(package.service_id) if package else None
         if package is None or service is None or not package.is_active or not service.is_active:
@@ -132,11 +164,25 @@ class BookingService:
                 raise UnprocessableError(
                     f'"{charge.name}" is charged at actuals on the day and cannot be added up front'
                 )
-        return _Priced(service, package, applicable, set(request.extra_charge_ids))
+        priced = _Priced(
+            service,
+            package,
+            applicable,
+            set(request.extra_charge_ids),
+            self._settings.advance_payment_percent,
+        )
+        if request.coupon_code:
+            if self._coupons is None or customer_id is None:
+                raise UnprocessableError("Coupons are not available right now")
+            coupon, discount = self._coupons.apply(
+                customer_id, request.coupon_code, priced.subtotal
+            )
+            priced.apply_discount(coupon.code, discount)
+        return priced
 
-    def quote(self, request: QuoteRequest) -> BookingQuote:
+    def quote(self, request: QuoteRequest, customer: ProfileOut | None = None) -> BookingQuote:
         """The summary the customer confirms: all numbers come from the catalogue."""
-        priced = self._price(request)
+        priced = self._price(request, customer.id if customer else None)
         return BookingQuote(
             service_id=priced.service.id,
             service_name=priced.service.name,
@@ -159,7 +205,12 @@ class BookingService:
                 for c in priced.charges
             ],
             extra_charges_total=priced.extra_total,
+            coupon_code=priced.coupon_code,
+            discount_amount=priced.discount,
             total_amount=priced.total,
+            advance_percent=priced.advance_percent,
+            advance_amount=priced.advance,
+            balance_after_advance=priced.total - priced.advance,
         )
 
     # ---- Location ----------------------------------------------------------------------
@@ -185,7 +236,7 @@ class BookingService:
                 "Add your name and mobile number in your profile before booking"
             )
 
-        priced = self._price(payload)
+        priced = self._price(payload, customer.id)
         vehicle = None
         if payload.vehicle_id is not None:
             vehicle = (
@@ -229,6 +280,10 @@ class BookingService:
             "package_inclusions": priced.package.inclusions,
             "estimated_duration_minutes": priced.package.estimated_duration_minutes,
             "package_price": str(priced.package_price),
+            "coupon_code": priced.coupon_code,
+            "discount_amount": str(priced.discount),
+            "advance_percent": str(priced.advance_percent),
+            "advance_amount": str(priced.advance),
             "customer_notes": payload.customer_notes,
             "vehicle_registration": vehicle.registration_number if vehicle else None,
             "vehicle_make": vehicle.make if vehicle else None,
@@ -281,12 +336,10 @@ class BookingService:
         records, total = self._bookings.list_for_customer(
             customer.id, statuses=statuses, limit=limit, offset=offset
         )
-        summaries = self._summaries(records)
+        facts = self._facts(records)
         assigned = self._assigned(records)
         return BookingPage(
-            items=[
-                self._customer_view(r, summaries, assigned, with_timeline=False) for r in records
-            ],
+            items=[self._customer_view(r, facts, assigned, with_timeline=False) for r in records],
             total=total,
             limit=limit,
             offset=offset,
@@ -313,9 +366,9 @@ class BookingService:
 
         sent = payload.model_fields_set
         values: dict[str, Any] = {}
-        for field in ("address_line", "landmark", "latitude", "longitude", "customer_notes"):
-            if field in sent:
-                values[field] = getattr(payload, field)
+        for name in ("address_line", "landmark", "latitude", "longitude", "customer_notes"):
+            if name in sent:
+                values[name] = getattr(payload, name)
         if ("latitude" in sent or "longitude" in sent) and (
             values.get("latitude", record.latitude) is None
         ) != (values.get("longitude", record.longitude) is None):
@@ -419,10 +472,10 @@ class BookingService:
             limit=limit,
             offset=offset,
         )
-        summaries = self._summaries(records)
+        facts = self._facts(records)
         assigned = self._assigned(records)
         return AdminBookingPage(
-            items=[self._admin_view(r, summaries, assigned, with_timeline=False) for r in records],
+            items=[self._admin_view(r, facts, assigned, with_timeline=False) for r in records],
             total=total,
             limit=limit,
             offset=offset,
@@ -432,10 +485,10 @@ class BookingService:
         self, records: list[BookingRecord], *, total: int, limit: int, offset: int
     ) -> AdminBookingPage:
         """Admin views for bookings already loaded (for example one driver's bookings)."""
-        summaries = self._summaries(records)
+        facts = self._facts(records)
         assigned = self._assigned(records)
         return AdminBookingPage(
-            items=[self._admin_view(r, summaries, assigned, with_timeline=False) for r in records],
+            items=[self._admin_view(r, facts, assigned, with_timeline=False) for r in records],
             total=total,
             limit=limit,
             offset=offset,
@@ -467,11 +520,17 @@ class BookingService:
         return self._admin_view(updated)
 
     # ---- Views -------------------------------------------------------------------------
-    def _summaries(self, records: list[BookingRecord]) -> dict[UUID, PaymentRecord]:
-        """One query for the payments of a whole page of bookings."""
-        if self._payments is None or not records:
-            return {}
-        return self._payments.summaries_for([r.id for r in records])
+    def _facts(self, records: list[BookingRecord]) -> _Facts:
+        """One query each for the payments and extra requests of a whole page of bookings."""
+        ids = [r.id for r in records]
+        facts = _Facts()
+        if not ids:
+            return facts
+        if self._payments is not None:
+            facts.payments = self._payments.for_bookings(ids)
+        if self._extras is not None:
+            facts.extras = self._extras.summaries(ids)
+        return facts
 
     def _assigned(
         self, records: list[BookingRecord]
@@ -496,14 +555,14 @@ class BookingService:
     def _customer_view(
         self,
         record: BookingRecord,
-        summaries: dict[UUID, PaymentRecord] | None = None,
+        facts: _Facts | None = None,
         assigned: dict[UUID, tuple[AssignmentRecord, ProfileOut | None]] | None = None,
         *,
         with_timeline: bool = True,
     ) -> BookingOut:
         if assigned is None:
             assigned = self._assigned([record])
-        data = self._base(record, summaries)
+        data = self._base(record, facts)
         if with_timeline and self._tracking is not None:
             data["timeline"] = self._tracking.timeline(record.id)
         found = assigned.get(record.id)
@@ -518,14 +577,14 @@ class BookingService:
     def _admin_view(
         self,
         record: BookingRecord,
-        summaries: dict[UUID, PaymentRecord] | None = None,
+        facts: _Facts | None = None,
         assigned: dict[UUID, tuple[AssignmentRecord, ProfileOut | None]] | None = None,
         *,
         with_timeline: bool = True,
     ) -> AdminBookingOut:
         if assigned is None:
             assigned = self._assigned([record])
-        data = self._base(record, summaries)
+        data = self._base(record, facts)
         if with_timeline and self._tracking is not None:
             data["timeline"] = self._tracking.timeline(record.id)
         found = assigned.get(record.id)
@@ -554,22 +613,32 @@ class BookingService:
             can_unassign=record.status == BookingStatus.ASSIGNED,
         )
 
-    def _payment_fields(
-        self, record: BookingRecord, summaries: dict[UUID, PaymentRecord] | None
-    ) -> dict[str, Any]:
+    def _payment_fields(self, record: BookingRecord, facts: _Facts | None) -> dict[str, Any]:
         if self._payments is None:
             return {}
-        if summaries is None:
-            summaries = self._summaries([record])
-        latest = summaries.get(record.id)
+        if facts is None:
+            facts = self._facts([record])
+        attempts = facts.payments.get(record.id, [])  # newest first
+        # The booking's own (advance) payment: the successful one, else the latest attempt.
+        advances = [p for p in attempts if p.kind == "advance"]
+        latest = next((p for p in advances if p.status == PaymentStatus.SUCCESSFUL), None) or (
+            advances[0] if advances else None
+        )
         paid = latest is not None and latest.status == PaymentStatus.SUCCESSFUL
+        extras = facts.extras.get(record.id, ExtrasSummary())
+        final_total = record.total_amount + extras.approved_total
+        amount_paid = successful_total(attempts)
+        cancelled = record.status == BookingStatus.CANCELLED
+        balance = billing.ZERO if cancelled else billing.balance_remaining(final_total, amount_paid)
         return {
             "payment": PaymentSummary(
                 id=latest.id,
+                kind=latest.kind,
                 status=latest.status,
                 amount=latest.amount,
                 currency=latest.currency,
                 method=latest.method,
+                receipt=latest.receipt,
                 transaction_id=latest.provider_payment_id,
                 paid_at=latest.paid_at,
                 failure_reason=latest.failure_reason,
@@ -585,11 +654,20 @@ class BookingService:
                 and record.total_amount > 0
                 and not paid
             ),
+            "approved_extras_total": extras.approved_total,
+            "pending_extras_count": extras.pending_count,
+            "final_total": final_total,
+            "amount_paid": amount_paid,
+            "balance_due": balance,
+            "can_pay_balance": (
+                self._settings.payments_enabled
+                and record.status == BookingStatus.COMPLETED
+                and balance > 0
+                and extras.pending_count == 0
+            ),
         }
 
-    def _base(
-        self, record: BookingRecord, summaries: dict[UUID, PaymentRecord] | None = None
-    ) -> dict[str, Any]:
+    def _base(self, record: BookingRecord, facts: _Facts | None = None) -> dict[str, Any]:
         slot_start = self._slot_start(record.scheduled_date, record.slot_start)
         now = self._now()
         cutoff = self._settings.booking_cancel_cutoff_hours
@@ -613,5 +691,5 @@ class BookingService:
             if record.status not in rules.FINAL_STATUSES
             else None,
         )
-        data.update(self._payment_fields(record, summaries))
+        data.update(self._payment_fields(record, facts))
         return data

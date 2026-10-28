@@ -5,6 +5,7 @@ Call `.get_secret_value()` only at the point of use.
 """
 
 import re
+from decimal import Decimal
 from functools import lru_cache
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -38,10 +39,6 @@ class Settings(BaseSettings):
     # Comma-separated in the environment (NoDecode stops pydantic-settings from
     # expecting JSON); parsed by the validator below.
     cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
-    # Flutter Web's dev server picks a random port, so outside production any
-    # http://localhost:<port> / http://127.0.0.1:<port> origin is accepted too.
-    # Set to false to allow only CORS_ORIGINS.
-    cors_allow_local_dev_origins: bool = True
 
     # --- Supabase ----------------------------------------------------------
     supabase_url: str = ""
@@ -76,6 +73,9 @@ class Settings(BaseSettings):
     # An unfinished payment attempt younger than this is reused instead of creating
     # a second gateway order.
     payment_attempt_reuse_minutes: int = Field(default=30, ge=1, le=1440)
+    # Share of the estimated booking total collected when the customer books. The rest
+    # (plus any extra charges the customer approved) is paid after the service.
+    advance_payment_percent: Decimal = Field(default=Decimal("20"), ge=0, le=100)
 
     # --- Availability (Phase 3) ---------------------------------------------
     # Wall-clock time in which slots, dates and "today" are interpreted.
@@ -226,13 +226,6 @@ class Settings(BaseSettings):
             and self.supabase_anon_key.get_secret_value()
             and self.supabase_service_role_key.get_secret_value()
         )
-
-    @property
-    def cors_origin_regex(self) -> str | None:
-        """Regex of extra allowed origins; only ever set in development."""
-        if self.app_env != "development" or not self.cors_allow_local_dev_origins:
-            return None
-        return r"^http://(localhost|127\.0\.0\.1)(:\d{1,5})?$"
 
     @property
     def maps_enabled(self) -> bool:

@@ -49,6 +49,25 @@ abstract final class ApiEndpoints {
   static String verifyPayment(String id) => '/payments/$id/verify';
   static String cancelPayment(String id) => '/payments/$id/cancel';
 
+  // The bill, extra charge requests, coupons and refunds
+  static String bookingBill(String id) => '/bookings/$id/bill';
+  static String bookingExtras(String id) => '/bookings/$id/extras';
+  static String approveExtra(String id, String extraId) =>
+      '/bookings/$id/extras/$extraId/approve';
+  static String declineExtra(String id, String extraId) =>
+      '/bookings/$id/extras/$extraId/decline';
+  static String driverBookingExtras(String id) => '/driver/bookings/$id/extras';
+  static String driverWithdrawExtra(String id, String extraId) =>
+      '/driver/bookings/$id/extras/$extraId/withdraw';
+  static String adminBookingBill(String id) => '/admin/bookings/$id/bill';
+  static String adminBookingExtras(String id) => '/admin/bookings/$id/extras';
+  static String adminWithdrawExtra(String id, String extraId) =>
+      '/admin/bookings/$id/extras/$extraId/withdraw';
+  static const String adminCoupons = '/admin/coupons';
+  static String adminCoupon(String id) => '/admin/coupons/$id';
+  static String adminPaymentRefunds(String paymentId) =>
+      '/admin/payments/$paymentId/refunds';
+
   // Admin: bookings, driver assignment, drivers
   static const String adminBookings = '/admin/bookings';
   static String adminBooking(String id) => '/admin/bookings/$id';

@@ -43,7 +43,7 @@ done
 echo "== Tests"
 LOG="$(mktemp)"
 # Test files share fixtures, so they run in filename order against one database.
-for t in "$ROOT"/supabase/tests/0[1-9]_*.sql; do
+for t in "$ROOT"/supabase/tests/[0-9][0-9]_*_test.sql; do
   echo "-- $(basename "$t")"
   psql -X -v ON_ERROR_STOP=1 -d "$DB" -f "$t" 2>&1 | tee -a "$LOG"
 done

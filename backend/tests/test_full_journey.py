@@ -76,8 +76,11 @@ def test_a_booking_from_browsing_to_completion() -> None:
     assert notes["unread"] >= 4
     assert w.client.post(f"{API}/notifications/read", headers=w.cust, json={}).json()["unread"] == 0
 
-    # A finished booking can no longer be paid for, changed or cancelled.
-    assert w.start(booking["id"]).status_code in (409, 422)
+    # Only the advance was paid, so the finished booking now asks for the balance
+    # (a fifth of the bill was collected when booking). It cannot be cancelled.
+    balance = w.start(booking["id"])
+    assert balance.status_code == 201, balance.text
+    assert balance.json()["payment"]["kind"] == "balance"
     assert (
         w.client.post(f"{API}/bookings/{booking['id']}/cancel", headers=w.cust, json={}).status_code
         == 409

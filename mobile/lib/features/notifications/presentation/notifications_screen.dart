@@ -209,6 +209,10 @@ IconData _iconFor(String kind) {
       return Icons.verified_outlined;
     case 'booking_cancelled':
       return Icons.cancel_outlined;
+    case 'extra_charge_requested':
+      return Icons.build_circle_outlined;
+    case 'refund_recorded':
+      return Icons.currency_rupee;
     default:
       return Icons.notifications_outlined;
   }

@@ -113,14 +113,12 @@ BookingQuote quote({double price = 499}) => BookingQuote(
       ],
     );
 
-BookingQuote _defaultQuote() => quote();
-
 /// In-memory bookings. Set [error] to fail every call, or one of the specific
 /// errors to fail just that call.
 class FakeBookingRepository implements BookingRepository {
   FakeBookingRepository({List<Booking>? bookings, BookingQuote? quoteResult})
       : bookings = bookings ?? [],
-        quoteResult = quoteResult ?? _defaultQuote();
+        quoteResult = quoteResult ?? quote();
 
   List<Booking> bookings;
   BookingQuote quoteResult;
@@ -143,7 +141,11 @@ class FakeBookingRepository implements BookingRepository {
   }
 
   @override
-  Future<BookingQuote> quote(String packageId) async {
+  Future<BookingQuote> quote(
+    String packageId, {
+    List<String> extraChargeIds = const [],
+    String? couponCode,
+  }) async {
     quoteCalls += 1;
     _check(quoteError);
     return quoteResult;

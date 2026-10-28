@@ -17,7 +17,11 @@ import 'booking_widgets.dart';
 /// Step 1 of booking: where should we come? The PIN code is checked with the
 /// server so only serviceable addresses go further.
 class BookingAddressScreen extends ConsumerStatefulWidget {
-  const BookingAddressScreen({super.key});
+  const BookingAddressScreen({super.key, this.pickOnly = false});
+
+  /// Opened from the checkout to confirm or change the location: saving goes
+  /// back to it instead of continuing to the time step.
+  final bool pickOnly;
 
   @override
   ConsumerState<BookingAddressScreen> createState() =>
@@ -155,7 +159,11 @@ class _BookingAddressScreenState extends ConsumerState<BookingAddressScreen> {
             ),
           );
       setState(() => _busy = false);
-      context.push(AppRoutes.bookSchedule);
+      if (widget.pickOnly) {
+        context.pop();
+      } else {
+        context.push(AppRoutes.bookSchedule);
+      }
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -169,21 +177,22 @@ class _BookingAddressScreenState extends ConsumerState<BookingAddressScreen> {
   Widget build(BuildContext context) {
     final flow = ref.watch(bookingFlowProvider);
     final package = flow.package;
-    if (!flow.hasPackage || package == null) {
+    if (!widget.pickOnly && (!flow.hasPackage || package == null)) {
       return const NothingSelectedView();
     }
     return FormPage(
-      title: 'Where should we come?',
+      title: widget.pickOnly ? 'Service location' : 'Where should we come?',
       formKey: _formKey,
       busy: _busy,
       error: _error,
       onSave: _continue,
-      saveLabel: 'Continue',
+      saveLabel: widget.pickOnly ? 'Use this location' : 'Continue',
       children: [
-        Text(
-          '${flow.service!.name} - ${package.name} (${formatMoney(package.price)})',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
+        if (package != null && flow.service != null)
+          Text(
+            '${flow.service!.name} - ${package.name} (${formatMoney(package.price)})',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
         _PreviousAddresses(onUse: _busy ? null : _usePrevious),
         fieldGap,
         TextFormField(

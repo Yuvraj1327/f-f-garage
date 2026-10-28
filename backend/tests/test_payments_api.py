@@ -124,17 +124,17 @@ def test_starting_a_payment_creates_an_order_for_the_server_total(pw: PayWorld) 
     assert r.status_code == 201, r.text
     out = r.json()
     assert out["payment"]["status"] == "pending"
-    assert out["payment"]["amount"] == "849.00" and out["payment"]["currency"] == "INR"
+    assert out["payment"]["amount"] == "169.80" and out["payment"]["currency"] == "INR"
     assert out["payment"]["booking_id"] == b["id"]
     c = out["checkout"]
-    assert c["amount_paise"] == 84900 and c["currency"] == "INR"
+    assert c["amount_paise"] == 16980 and c["currency"] == "INR"
     assert c["key_id"] == "rzp_test_abc123" and c["mode"] == "test"
     assert c["order_id"] == out["payment"]["gateway_order_id"]
     assert c["prefill_name"] == pw.ctx.customer.full_name
     assert "FF-000001" in c["description"]
     # What the gateway was asked for: the booking's own total, tied to the booking code.
     order = pw.ctx.gateway.orders[0]
-    assert (order["amount"], order["currency"], order["receipt"]) == (84900, "INR", "FF-000001")
+    assert (order["amount"], order["currency"], order["receipt"]) == (16980, "INR", "FF-000001")
     assert order["notes"]["booking_id"] == b["id"]
 
 
@@ -153,7 +153,7 @@ def test_the_app_cannot_choose_the_amount(pw: PayWorld) -> None:
     )
     # The body is ignored: the amount is always the booking total.
     assert r.status_code == 201
-    assert r.json()["checkout"]["amount_paise"] == 49900
+    assert r.json()["checkout"]["amount_paise"] == 9980
 
 
 def test_starting_twice_reuses_the_open_attempt(pw: PayWorld) -> None:
@@ -217,6 +217,7 @@ def test_a_zero_total_booking_has_nothing_to_pay(pw: PayWorld) -> None:
     b = pw.booking()
     row = pw.ctx.bookings.rows[uuid.UUID(b["id"])]
     row["package_price"] = row["package_price"] * 0
+    row["advance_amount"] = row["advance_amount"] * 0
     assert pw.start(b["id"]).status_code == 422
 
 
@@ -254,7 +255,7 @@ def test_valid_signature_and_gateway_confirmation_marks_paid_and_confirms(pw: Pa
     assert out["paid"] is True and out["outcome"] == "paid" and out["booking_status"] == "confirmed"
     p = out["payment"]
     assert p["status"] == "successful" and p["transaction_id"] == "pay_ok1"
-    assert p["method"] == "upi" and p["paid_at"] is not None and p["amount"] == "849.00"
+    assert p["method"] == "upi" and p["paid_at"] is not None and p["amount"] == "169.80"
     mine = pw.client.get(f"{API}/bookings/{b['id']}", headers=pw.cust).json()
     assert mine["status"] == "confirmed" and mine["confirmed_at"] is not None
     assert mine["is_paid"] is True and mine["can_pay"] is False
@@ -304,7 +305,7 @@ def test_a_payment_of_another_order_is_refused(pw: PayWorld) -> None:
     order = s["checkout"]["order_id"]
     # the gateway says pay_x was captured, but for a different order
     pw.ctx.gateway.payments["pay_x"] = GatewayPayment(
-        "pay_x", "order_other", 49900, "INR", "captured"
+        "pay_x", "order_other", 9980, "INR", "captured"
     )
     assert pw.verify(s["payment"]["id"], order, "pay_x").status_code == 422
     assert pw.booking_status(b["id"]) == "pending_payment"
@@ -317,7 +318,7 @@ def test_amount_must_match_the_order_exactly(pw: PayWorld) -> None:
     b = pw.booking()
     s = pw.started(b)
     order = s["checkout"]["order_id"]
-    for paise, currency in ((100, "INR"), (99900, "INR"), (49900, "USD")):
+    for paise, currency in ((100, "INR"), (99900, "INR"), (9980, "USD")):
         pw.ctx.gateway.will_report("pay_bad", order, paise, currency=currency)
         r = pw.verify(s["payment"]["id"], order, "pay_bad")
         assert r.status_code == 200
@@ -414,7 +415,7 @@ def test_money_that_arrives_after_cancel_is_still_honoured(pw: PayWorld) -> None
     b = pw.booking()
     s = pw.started(b)
     pw.client.post(f"{API}/payments/{s['payment']['id']}/cancel", headers=pw.cust)
-    r = pw.webhook("payment.captured", s["checkout"]["order_id"], "pay_late", 49900)
+    r = pw.webhook("payment.captured", s["checkout"]["order_id"], "pay_late", 9980)
     assert r.status_code == 200 and r.json()["status"] == "paid"
     assert pw.booking_status(b["id"]) == "confirmed"
 
@@ -430,7 +431,7 @@ def test_payment_after_the_booking_was_cancelled_is_flagged_for_refund(pw: PayWo
     b = pw.booking()
     s = pw.started(b)
     pw.client.post(f"{API}/bookings/{b['id']}/cancel", headers=pw.cust, json={})
-    r = pw.webhook("payment.captured", s["checkout"]["order_id"], "pay_late", 49900)
+    r = pw.webhook("payment.captured", s["checkout"]["order_id"], "pay_late", 9980)
     assert r.json()["status"] == "paid_review"
     rec = pw.ctx.payments.rows[uuid.UUID(s["payment"]["id"])]
     assert rec.status == PaymentStatus.SUCCESSFUL and rec.needs_review
@@ -456,7 +457,7 @@ def test_cancelling_a_paid_booking_flags_the_payment(pw: PayWorld) -> None:
 def test_webhook_captured_confirms_the_booking(pw: PayWorld) -> None:
     b = pw.booking()
     s = pw.started(b)
-    r = pw.webhook("payment.captured", s["checkout"]["order_id"], "pay_w1", 49900)
+    r = pw.webhook("payment.captured", s["checkout"]["order_id"], "pay_w1", 9980)
     assert r.status_code == 200 and r.json() == {"status": "paid"}
     assert pw.booking_status(b["id"]) == "confirmed"
     rec = pw.ctx.payments.rows[uuid.UUID(s["payment"]["id"])]
@@ -470,7 +471,7 @@ def test_webhook_captured_confirms_the_booking(pw: PayWorld) -> None:
 def test_webhook_order_paid_is_handled_too(pw: PayWorld) -> None:
     b = pw.booking()
     s = pw.started(b)
-    r = pw.webhook("order.paid", s["checkout"]["order_id"], "pay_w1", 49900, event_id="evt_op")
+    r = pw.webhook("order.paid", s["checkout"]["order_id"], "pay_w1", 9980, event_id="evt_op")
     assert r.json()["status"] == "paid"
 
 
@@ -483,7 +484,7 @@ def test_webhook_with_a_bad_signature_is_rejected(pw: PayWorld) -> None:
         {"secret": "attacker-secret"},
         {"signature": ""},
     ):
-        r = pw.webhook("payment.captured", order, "pay_w1", 49900, **kwargs)
+        r = pw.webhook("payment.captured", order, "pay_w1", 9980, **kwargs)
         assert r.status_code == 400, kwargs
     assert pw.booking_status(b["id"]) == "pending_payment"
     assert pw.ctx.payments.events == []
@@ -500,7 +501,7 @@ def test_webhook_signature_covers_the_exact_body(pw: PayWorld) -> None:
                     "entity": {
                         "id": "pay_w1",
                         "order_id": s["checkout"]["order_id"],
-                        "amount": 49900,
+                        "amount": 9980,
                         "currency": "INR",
                     }
                 }
@@ -508,7 +509,7 @@ def test_webhook_signature_covers_the_exact_body(pw: PayWorld) -> None:
         }
     ).encode()
     sig = rules.webhook_signature(body, WEBHOOK_SECRET)
-    tampered = body.replace(b"49900", b"100")
+    tampered = body.replace(b"9980", b"100")
     r = pw.client.post(
         f"{API}/webhooks/razorpay", content=tampered, headers={"X-Razorpay-Signature": sig}
     )
@@ -525,8 +526,7 @@ def test_webhook_needs_no_login(pw: PayWorld) -> None:
     b = pw.booking()
     s = pw.started(b)
     assert (
-        pw.webhook("payment.captured", s["checkout"]["order_id"], "pay_w1", 49900).status_code
-        == 200
+        pw.webhook("payment.captured", s["checkout"]["order_id"], "pay_w1", 9980).status_code == 200
     )
 
 
@@ -534,8 +534,8 @@ def test_the_same_webhook_delivered_twice_is_applied_once(pw: PayWorld) -> None:
     b = pw.booking()
     s = pw.started(b)
     order = s["checkout"]["order_id"]
-    first = pw.webhook("payment.captured", order, "pay_w1", 49900, event_id="evt_same")
-    second = pw.webhook("payment.captured", order, "pay_w1", 49900, event_id="evt_same")
+    first = pw.webhook("payment.captured", order, "pay_w1", 9980, event_id="evt_same")
+    second = pw.webhook("payment.captured", order, "pay_w1", 9980, event_id="evt_same")
     assert (first.status_code, second.status_code) == (200, 200)
     assert first.json()["status"] == "paid" and second.json()["status"] == "duplicate_event"
     assert sum(p.status == PaymentStatus.SUCCESSFUL for p in pw.ctx.payments.rows.values()) == 1
@@ -546,8 +546,8 @@ def test_a_new_event_for_the_same_payment_changes_nothing(pw: PayWorld) -> None:
     b = pw.booking()
     s = pw.started(b)
     order = s["checkout"]["order_id"]
-    pw.webhook("payment.captured", order, "pay_w1", 49900, event_id="evt_a")
-    again = pw.webhook("order.paid", order, "pay_w1", 49900, event_id="evt_b")
+    pw.webhook("payment.captured", order, "pay_w1", 9980, event_id="evt_a")
+    again = pw.webhook("order.paid", order, "pay_w1", 9980, event_id="evt_b")
     assert again.json()["status"] == "already_processed"
 
 
@@ -556,8 +556,8 @@ def test_a_webhook_without_an_event_id_is_still_deduplicated(pw: PayWorld) -> No
     s = pw.started(b)
     order = s["checkout"]["order_id"]
     # same body twice -> same derived key
-    first = pw.webhook("payment.captured", order, "pay_w1", 49900, event_id=None)
-    second = pw.webhook("payment.captured", order, "pay_w1", 49900, event_id=None)
+    first = pw.webhook("payment.captured", order, "pay_w1", 9980, event_id=None)
+    second = pw.webhook("payment.captured", order, "pay_w1", 9980, event_id=None)
     assert first.json()["status"] == "paid" and second.json()["status"] == "duplicate_event"
 
 
@@ -568,7 +568,7 @@ def test_verify_then_webhook_then_verify_all_agree(pw: PayWorld) -> None:
     order = s["checkout"]["order_id"]
     assert pw.verify(s["payment"]["id"], order, "pay_ok1").json()["outcome"] == "paid"
     assert (
-        pw.webhook("payment.captured", order, "pay_ok1", 49900).json()["status"]
+        pw.webhook("payment.captured", order, "pay_ok1", 9980).json()["status"]
         == "already_processed"
     )
     assert pw.verify(s["payment"]["id"], order, "pay_ok1").json()["outcome"] == "already_processed"
@@ -583,7 +583,7 @@ def test_webhook_amount_mismatch_is_not_accepted(pw: PayWorld) -> None:
     assert r.status_code == 200 and r.json()["status"] == "amount_mismatch"
     assert pw.booking_status(b["id"]) == "pending_payment"
     assert pw.ctx.payments.rows[uuid.UUID(s["payment"]["id"])].needs_review
-    r = pw.webhook("payment.captured", order, "pay_w2", 49900, currency="USD", event_id="evt_usd")
+    r = pw.webhook("payment.captured", order, "pay_w2", 9980, currency="USD", event_id="evt_usd")
     assert r.json()["status"] == "amount_mismatch"
 
 
@@ -597,7 +597,7 @@ def test_webhook_failed_marks_the_attempt_failed_and_a_retry_can_still_succeed(
         "payment.failed",
         order,
         "pay_w1",
-        49900,
+        9980,
         event_id="evt_f",
         extra={"error_description": "Insufficient funds"},
     )
@@ -607,7 +607,7 @@ def test_webhook_failed_marks_the_attempt_failed_and_a_retry_can_still_succeed(
     assert pw.booking_status(b["id"]) == "pending_payment"
     # The customer retried inside the same Razorpay checkout and it worked.
     assert (
-        pw.webhook("payment.captured", order, "pay_w2", 49900, event_id="evt_ok").json()["status"]
+        pw.webhook("payment.captured", order, "pay_w2", 9980, event_id="evt_ok").json()["status"]
         == "paid"
     )
     assert pw.booking_status(b["id"]) == "confirmed"
@@ -617,8 +617,8 @@ def test_a_late_failure_never_undoes_success(pw: PayWorld) -> None:
     b = pw.booking()
     s = pw.started(b)
     order = s["checkout"]["order_id"]
-    pw.webhook("payment.captured", order, "pay_w1", 49900, event_id="evt_ok")
-    r = pw.webhook("payment.failed", order, "pay_w0", 49900, event_id="evt_late_fail")
+    pw.webhook("payment.captured", order, "pay_w1", 9980, event_id="evt_ok")
+    r = pw.webhook("payment.failed", order, "pay_w0", 9980, event_id="evt_late_fail")
     assert r.json()["status"] == "ignored"
     assert pw.booking_status(b["id"]) == "confirmed"
 
@@ -626,7 +626,7 @@ def test_a_late_failure_never_undoes_success(pw: PayWorld) -> None:
 def test_a_second_payment_for_a_paid_booking_is_flagged_not_accepted(pw: PayWorld) -> None:
     b = pw.booking()
     s1 = pw.started(b)
-    pw.webhook("payment.captured", s1["checkout"]["order_id"], "pay_1", 49900, event_id="e1")
+    pw.webhook("payment.captured", s1["checkout"]["order_id"], "pay_1", 9980, event_id="e1")
     # A second order exists (e.g. created from another device before the first finished).
     second = pw.ctx.payments.create_attempt(
         {
@@ -634,10 +634,10 @@ def test_a_second_payment_for_a_paid_booking_is_flagged_not_accepted(pw: PayWorl
             "customer_id": str(pw.ctx.customer.id),
             "provider": "razorpay",
             "provider_order_id": "order_second",
-            "amount": "499.00",
+            "amount": "99.80",
         }
     )
-    r = pw.webhook("payment.captured", "order_second", "pay_2", 49900, event_id="e2")
+    r = pw.webhook("payment.captured", "order_second", "pay_2", 9980, event_id="e2")
     assert r.json()["status"] == "duplicate_payment"
     rec = pw.ctx.payments.rows[second.id]
     assert rec.status == PaymentStatus.FAILED and rec.needs_review
@@ -648,15 +648,15 @@ def test_a_second_capture_on_the_same_order_is_flagged(pw: PayWorld) -> None:
     b = pw.booking()
     s = pw.started(b)
     order = s["checkout"]["order_id"]
-    pw.webhook("payment.captured", order, "pay_1", 49900, event_id="e1")
-    r = pw.webhook("payment.captured", order, "pay_2", 49900, event_id="e2")
+    pw.webhook("payment.captured", order, "pay_1", 9980, event_id="e1")
+    r = pw.webhook("payment.captured", order, "pay_2", 9980, event_id="e2")
     assert r.json()["status"] == "duplicate_payment"
     rec = pw.ctx.payments.rows[uuid.UUID(s["payment"]["id"])]
     assert rec.provider_payment_id == "pay_1" and rec.needs_review
 
 
 def test_webhook_for_an_unknown_order_is_acknowledged_not_retried(pw: PayWorld) -> None:
-    r = pw.webhook("payment.captured", "order_nobody", "pay_x", 49900)
+    r = pw.webhook("payment.captured", "order_nobody", "pay_x", 9980)
     assert r.status_code == 200 and r.json()["status"] == "unknown_order"
 
 
@@ -818,9 +818,7 @@ def test_admin_payment_date_filters(admin_world) -> None:
 
 def test_admin_payment_detail_includes_the_event_log(admin_world) -> None:
     pw, (b1, s1), _ = admin_world
-    pw.webhook(
-        "payment.captured", s1["checkout"]["order_id"], "pay_adm1", 49900, event_id="evt_dup"
-    )
+    pw.webhook("payment.captured", s1["checkout"]["order_id"], "pay_adm1", 9980, event_id="evt_dup")
     out = pw.client.get(
         f"{API}/admin/payments/{s1['payment']['id']}", headers=pw.ctx.as_admin
     ).json()

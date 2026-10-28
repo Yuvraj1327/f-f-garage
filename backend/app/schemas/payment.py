@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 from app.domain.enums import BookingStatus, PaymentStatus
+from app.schemas.billing import RefundRecord
 
 # Money always shows two decimals ("849.00"), like in the booking schemas.
 Amount = Annotated[
@@ -28,6 +29,8 @@ class PaymentRecord(BaseModel):
     provider: str
     provider_order_id: str | None = None
     provider_payment_id: str | None = None
+    # 'advance' (collected when booking) or 'balance' (collected after the service).
+    kind: str = "advance"
     amount: Amount
     currency: str
     status: PaymentStatus
@@ -46,10 +49,12 @@ class PaymentSummary(BaseModel):
     """The payment line shown inside a booking."""
 
     id: UUID
+    kind: str = "advance"
     status: PaymentStatus
     amount: Amount
     currency: str
     method: str | None = None
+    receipt: str | None = None
     transaction_id: str | None = None
     paid_at: datetime | None = None
     failure_reason: str | None = None
@@ -122,7 +127,6 @@ class PaymentEventOut(BaseModel):
 
 class AdminPaymentOut(PaymentOut):
     customer_id: UUID
-    receipt: str | None = None
     needs_review: bool = False
     review_reason: str | None = None
     updated_at: datetime
@@ -130,6 +134,7 @@ class AdminPaymentOut(PaymentOut):
 
 class AdminPaymentDetail(AdminPaymentOut):
     events: list[PaymentEventOut] = Field(default_factory=list)
+    refunds: list[RefundRecord] = Field(default_factory=list)
 
 
 class AdminPaymentPage(BaseModel):

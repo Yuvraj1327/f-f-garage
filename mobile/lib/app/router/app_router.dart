@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/models/place.dart';
 import '../../features/admin/areas/admin_areas_screen.dart';
+import '../../features/admin/coupons/admin_coupons_screen.dart';
 import '../../features/admin/availability/admin_availability_screen.dart';
 import '../../features/admin/bookings/admin_booking_detail_screen.dart';
 import '../../features/admin/bookings/admin_bookings_screen.dart';
@@ -22,6 +23,7 @@ import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/providers/auth_controller.dart';
 import '../../features/booking/presentation/booking_address_screen.dart';
+import '../../features/booking/presentation/checkout_screen.dart';
 import '../../features/booking/presentation/booking_detail_screen.dart';
 import '../../features/booking/presentation/booking_edit_screen.dart';
 import '../../features/booking/presentation/booking_history_screen.dart';
@@ -139,7 +141,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'book-address',
             name: 'book-address',
-            builder: (context, state) => const BookingAddressScreen(),
+            builder: (context, state) => BookingAddressScreen(
+              pickOnly: state.uri.queryParameters['pick'] == '1',
+            ),
+          ),
+          GoRoute(
+            path: 'checkout',
+            name: 'checkout',
+            builder: (context, state) => const CheckoutScreen(),
           ),
           GoRoute(
             path: 'book-schedule',
@@ -259,6 +268,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ],
               ),
             ],
+          ),
+          GoRoute(
+            path: 'coupons',
+            name: 'admin-coupons',
+            builder: (context, state) => const AdminCouponsScreen(),
           ),
           GoRoute(
             path: 'areas',

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/uuid.dart';
 import '../../../data/models/availability.dart';
+import '../../../data/models/billing.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/catalog.dart';
 import '../../../data/models/enums.dart';
@@ -87,6 +88,8 @@ class BookingFlowState {
     this.schedule,
     this.extraChargeIds = const {},
     this.notes = '',
+    this.couponCode,
+    this.instant = true,
   });
 
   /// Identifies this attempt. If "Confirm" is retried after a lost response the
@@ -99,6 +102,13 @@ class BookingFlowState {
   final Set<String> extraChargeIds;
   final String notes;
 
+  /// A coupon the server has already accepted for this booking.
+  final String? couponCode;
+
+  /// True = "as soon as possible" (the earliest open slot); false = the
+  /// customer picks a date and time.
+  final bool instant;
+
   bool get hasPackage => service != null && package != null;
 
   bool get isComplete => hasPackage && address != null && schedule != null;
@@ -108,6 +118,9 @@ class BookingFlowState {
     BookingSchedule? schedule,
     Set<String>? extraChargeIds,
     String? notes,
+    String? couponCode,
+    bool clearCoupon = false,
+    bool? instant,
   }) =>
       BookingFlowState(
         requestId: requestId,
@@ -117,6 +130,8 @@ class BookingFlowState {
         schedule: schedule ?? this.schedule,
         extraChargeIds: extraChargeIds ?? this.extraChargeIds,
         notes: notes ?? this.notes,
+        couponCode: clearCoupon ? null : (couponCode ?? this.couponCode),
+        instant: instant ?? this.instant,
       );
 }
 
@@ -124,14 +139,23 @@ class BookingFlowController extends Notifier<BookingFlowState> {
   @override
   BookingFlowState build() => BookingFlowState(requestId: newUuidV4());
 
-  /// Starts a new booking for [package]; anything chosen before is dropped.
+  /// Starts a new booking for [package]; anything chosen before is dropped,
+  /// except the address, which stays so the customer does not type it again.
   void start(GarageService service, ServicePackage package) {
     state = BookingFlowState(
       requestId: newUuidV4(),
       service: service,
       package: package,
+      address: state.address,
+      schedule: state.schedule,
+      instant: state.instant,
     );
   }
+
+  void setCoupon(String? code) => state =
+      code == null ? state.copyWith(clearCoupon: true) : state.copyWith(couponCode: code);
+
+  void setInstant(bool instant) => state = state.copyWith(instant: instant);
 
   void setAddress(BookingAddress address) =>
       state = state.copyWith(address: address);
@@ -164,6 +188,56 @@ final bookingQuoteProvider =
     FutureProvider.autoDispose.family<BookingQuote, String>(
   (ref, packageId) => ref.watch(bookingRepositoryProvider).quote(packageId),
 );
+
+/// What the checkout asks the server to price: the package, the add-ons the
+/// customer ticked and the coupon they applied.
+class QuoteKey {
+  QuoteKey(this.packageId, Set<String> extraChargeIds, this.couponCode)
+      : extraChargeIds = (extraChargeIds.toList()..sort());
+
+  final String packageId;
+  final List<String> extraChargeIds;
+  final String? couponCode;
+
+  @override
+  bool operator ==(Object other) =>
+      other is QuoteKey &&
+      other.packageId == packageId &&
+      other.couponCode == couponCode &&
+      other.extraChargeIds.join(',') == extraChargeIds.join(',');
+
+  @override
+  int get hashCode =>
+      Object.hash(packageId, couponCode, extraChargeIds.join(','));
+}
+
+final checkoutQuoteProvider =
+    FutureProvider.autoDispose.family<BookingQuote, QuoteKey>(
+  (ref, key) => ref.watch(bookingRepositoryProvider).quote(
+        key.packageId,
+        extraChargeIds: key.extraChargeIds,
+        couponCode: key.couponCode,
+      ),
+);
+
+/// The earliest open slot, for "as soon as possible" bookings; null when
+/// nothing is open. (No arrival time is promised: the garage confirms it.)
+BookingSchedule? earliestSlot(List<DayAvailability> days) {
+  for (final day in days) {
+    if (!day.isOpen) continue;
+    for (final slot in day.slots) {
+      if (slot.available) {
+        return BookingSchedule(
+          date: day.date,
+          slotId: slot.slotId,
+          start: slot.start,
+          end: slot.end,
+        );
+      }
+    }
+  }
+  return null;
+}
 
 /// Days a customer can pick from: today and the following 30 days (the API
 /// answers at most 31 days at a time).
@@ -212,6 +286,12 @@ final bookingProvider = FutureProvider.autoDispose.family<Booking, String>(
   (ref, id) => ref.watch(bookingRepositoryProvider).get(id),
 );
 
+/// The bill of one booking: estimate, approved extras, advance, balance,
+/// receipts and refunds. Every figure is the server's.
+final billProvider = FutureProvider.autoDispose.family<Bill, String>(
+  (ref, id) => ref.watch(billingRepositoryProvider).bill(id),
+);
+
 /// Bumped whenever a booking is created, changed or cancelled, so the history
 /// list reloads.
 final bookingsRefreshProvider = StateProvider<int>((ref) => 0);
@@ -220,6 +300,7 @@ void refreshBookings(WidgetRef ref, {String? bookingId}) {
   ref.read(bookingsRefreshProvider.notifier).state++;
   if (bookingId != null) {
     ref.invalidate(bookingProvider(bookingId));
+    ref.invalidate(billProvider(bookingId));
   }
 }
 

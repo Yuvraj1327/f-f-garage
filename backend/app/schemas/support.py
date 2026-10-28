@@ -10,3 +10,5 @@ class SupportContactOut(BaseModel):
     email: str
     address: str
     hours: str
+    # The refund policy the garage configured ("" = none: ask the garage).
+    refund_policy: str = ""

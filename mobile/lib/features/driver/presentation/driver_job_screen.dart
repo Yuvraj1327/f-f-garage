@@ -10,6 +10,7 @@ import '../../../data/models/place.dart';
 import '../../../data/providers/data_providers.dart';
 import '../../auth/presentation/widgets/auth_widgets.dart' show MessageBanner;
 import '../../booking/presentation/booking_widgets.dart';
+import '../../booking/presentation/extra_requests_panel.dart';
 import '../../maps/location_map_card.dart';
 import '../providers/driver_providers.dart';
 import 'driver_widgets.dart';
@@ -105,6 +106,13 @@ class _DriverJobScreenState extends ConsumerState<DriverJobScreen> {
                     message: 'This job is completed.',
                   ),
                 _Details(job: job),
+                if (job.status == BookingStatus.inProgress ||
+                    job.status == BookingStatus.completed)
+                  ExtraRequestsPanel(
+                    bookingId: job.id,
+                    actor: ExtraActor.driver,
+                    canRequest: job.status == BookingStatus.inProgress,
+                  ),
                 const SizedBox(height: 16),
               ],
             ),

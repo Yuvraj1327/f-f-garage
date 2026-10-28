@@ -48,13 +48,15 @@ class _GarageFormState extends ConsumerState<_GarageForm> {
   late final _email = TextEditingController(text: widget.initial.email);
   late final _address = TextEditingController(text: widget.initial.address);
   late final _hours = TextEditingController(text: widget.initial.hours);
+  late final _refund =
+      TextEditingController(text: widget.initial.refundPolicy);
   bool _busy = false;
   bool _saved = false;
   String? _error;
 
   @override
   void dispose() {
-    for (final c in [_name, _phone, _whatsapp, _email, _address, _hours]) {
+    for (final c in [_name, _phone, _whatsapp, _email, _address, _hours, _refund]) {
       c.dispose();
     }
     super.dispose();
@@ -83,6 +85,7 @@ class _GarageFormState extends ConsumerState<_GarageForm> {
             email: _email.text.trim(),
             address: _address.text.trim(),
             hours: _hours.text.trim(),
+            refundPolicy: _refund.text.trim(),
           );
       ref.invalidate(supportContactProvider);
       if (!mounted) return;
@@ -182,11 +185,27 @@ class _GarageFormState extends ConsumerState<_GarageForm> {
             controller: _hours,
             enabled: !_busy,
             maxLength: 120,
-            textInputAction: TextInputAction.done,
-            onFieldSubmitted: (_) => _save(),
+            textInputAction: TextInputAction.next,
             decoration: const InputDecoration(
               labelText: 'Opening hours',
               hintText: 'Mon-Sat, 9 am - 7 pm',
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            key: const ValueKey('garage-refund-policy'),
+            controller: _refund,
+            enabled: !_busy,
+            minLines: 2,
+            maxLines: 5,
+            maxLength: 1000,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              labelText: 'Refund policy (shown to customers)',
+              helperText: 'Refunds are decided by an admin case by case and '
+                  'made in the payment gateway, then recorded here. '
+                  'Nothing is refunded automatically.',
+              helperMaxLines: 3,
             ),
           ),
           const SizedBox(height: 16),

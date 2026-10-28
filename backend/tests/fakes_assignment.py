@@ -30,6 +30,8 @@ class FakeAssignmentRepository:
         self.bookings = bookings
         self.profiles = profiles
         self.payments = payments
+        # Set by the test context: the "cannot complete with an open extra request" guard.
+        self.extras = None
         self.rows: list[AssignmentRecord] = []
         self.rpc_calls: list[tuple[str, tuple]] = []
         # Called as (booking_id, driver_id, had_earlier_assignment) for each new active assignment.
@@ -152,6 +154,12 @@ class FakeAssignmentRepository:
             return AssignmentResult(result="booking_cancelled", booking_status=current)
         if rules.DRIVER_STEPS.get(current) != status:
             return AssignmentResult(result="invalid_transition", booking_status=current)
+        if (
+            status == S.COMPLETED
+            and self.extras is not None
+            and any(e.status == "proposed" for e in self.extras.list_for_booking(booking_id))
+        ):
+            return AssignmentResult(result="extras_pending", booking_status=current)
         self._set_status(booking_id, status)
         return AssignmentResult(result="updated", booking_status=status)
 

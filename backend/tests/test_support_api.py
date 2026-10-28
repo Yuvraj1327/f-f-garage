@@ -17,7 +17,15 @@ def test_requires_sign_in(ctx: Ctx):  # noqa: F811
 def test_every_role_can_read(ctx: Ctx, who):  # noqa: F811
     r = ctx.client.get(URL, headers=getattr(ctx, who))
     assert r.status_code == 200
-    assert set(r.json()) == {"name", "phone", "whatsapp", "email", "address", "hours"}
+    assert set(r.json()) == {
+        "name",
+        "phone",
+        "whatsapp",
+        "email",
+        "address",
+        "hours",
+        "refund_policy",
+    }
 
 
 def test_unconfigured_fields_are_empty(ctx: Ctx):  # noqa: F811

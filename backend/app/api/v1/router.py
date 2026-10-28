@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     admin_garage,
     admin_service_areas,
     assignments,
+    billing,
     bookings,
     catalog,
     health,
@@ -36,6 +37,9 @@ api_router.include_router(payments.webhook_router)
 api_router.include_router(payments.admin_router)
 api_router.include_router(assignments.admin_router)
 api_router.include_router(assignments.driver_router)
+api_router.include_router(billing.router)
+api_router.include_router(billing.driver_router)
+api_router.include_router(billing.admin_router)
 api_router.include_router(notifications.router)
 api_router.include_router(support.router)
 api_router.include_router(maps.router)

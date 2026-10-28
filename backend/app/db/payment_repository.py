@@ -43,8 +43,12 @@ class PaymentRepository(Protocol):
 
     def list_for_booking(self, booking_id: UUID) -> list[PaymentRecord]: ...
 
-    def summaries_for(self, booking_ids: list[UUID]) -> dict[UUID, PaymentRecord]:
-        """The successful payment of each booking, else its latest attempt."""
+    def for_bookings(self, booking_ids: list[UUID]) -> dict[UUID, list[PaymentRecord]]:
+        """Every attempt of each booking (newest first), in one query."""
+        ...
+
+    def resolve_review(self, payment_id: UUID) -> PaymentRecord | None:
+        """Clears the "needs a decision" flag; None when there is no such payment."""
         ...
 
     def cancel_open(self, payment_id: UUID) -> PaymentRecord | None:
@@ -150,7 +154,7 @@ class SupabasePaymentRepository:
         )
         return [self._record(r) for r in rows]
 
-    def summaries_for(self, booking_ids: list[UUID]) -> dict[UUID, PaymentRecord]:
+    def for_bookings(self, booking_ids: list[UUID]) -> dict[UUID, list[PaymentRecord]]:
         if not booking_ids:
             return {}
         rows = run(
@@ -159,16 +163,19 @@ class SupabasePaymentRepository:
             .in_("booking_id", [str(i) for i in booking_ids])
             .order("created_at", desc=True)
         )
-        chosen: dict[UUID, PaymentRecord] = {}
+        grouped: dict[UUID, list[PaymentRecord]] = {}
         for row in rows:  # newest first
             record = self._record(row)
-            current = chosen.get(record.booking_id)
-            if current is None or (
-                record.status == PaymentStatus.SUCCESSFUL
-                and current.status != PaymentStatus.SUCCESSFUL
-            ):
-                chosen[record.booking_id] = record
-        return chosen
+            grouped.setdefault(record.booking_id, []).append(record)
+        return grouped
+
+    def resolve_review(self, payment_id: UUID) -> PaymentRecord | None:
+        rows = run(
+            self._client.table(self.TABLE)
+            .update({"needs_review": False, "review_reason": None})
+            .eq("id", str(payment_id))
+        )
+        return self._record(rows[0]) if rows else None
 
     def cancel_open(self, payment_id: UUID) -> PaymentRecord | None:
         rows = run(

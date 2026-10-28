@@ -18,6 +18,7 @@ import '../../payment/presentation/payment_widgets.dart';
 import '../../maps/location_map_card.dart';
 import '../../notifications/providers/notification_providers.dart';
 import '../providers/booking_providers.dart';
+import 'bill_section.dart';
 import 'booking_timeline.dart';
 import 'booking_widgets.dart';
 
@@ -81,6 +82,8 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
           fresh.driver?.phone != shown.driver?.phone ||
           fresh.payment?.status != shown.payment?.status ||
           fresh.canPay != shown.canPay ||
+          fresh.canPayBalance != shown.canPayBalance ||
+          fresh.pendingExtrasCount != shown.pendingExtrasCount ||
           fresh.canCancel != shown.canCancel) {
         ref.invalidate(bookingProvider(widget.bookingId));
       }
@@ -186,14 +189,20 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
                   ),
                 _Body(booking: booking),
                 const SizedBox(height: 8),
-                if (booking.canPay)
+                if (booking.canPay || booking.canPayBalance)
                   FilledButton.icon(
                     key: const ValueKey('pay-now'),
                     onPressed: _busy
                         ? null
                         : () => context.push(AppRoutes.bookingPay(booking.id)),
                     icon: const Icon(Icons.payment),
-                    label: Text('Pay ${formatMoney(booking.totalAmount)}'),
+                    label: Text(
+                      booking.canPayBalance
+                          ? 'Pay balance ${formatMoney(booking.balanceDue)}'
+                          : (booking.advanceAmount > 0
+                              ? 'Pay advance ${formatMoney(booking.advanceAmount)}'
+                              : 'Pay ${formatMoney(booking.totalAmount)}'),
+                    ),
                   ),
                 if (booking.canModify) ...[
                   const SizedBox(height: 8),
@@ -307,6 +316,8 @@ class _Body extends StatelessWidget {
             padding: EdgeInsets.only(bottom: 8),
             child: Text('Payment: Not paid yet', key: ValueKey('payment-line')),
           ),
+        if (booking.hasPendingExtras && !booking.isCancelled)
+          ExtraApprovals(bookingId: booking.id),
         if (booking.isCancelled && booking.cancellationReason != null)
           SectionCard(
             title: 'Cancelled',
@@ -390,38 +401,7 @@ class _Body extends StatelessWidget {
             title: 'Payment',
             children: [Text('Online payment is not available right now.')],
           ),
-        SectionCard(
-          title: 'Price',
-          children: [
-            SummaryRow(
-              label: booking.packageName,
-              value: formatMoney(booking.packagePrice),
-            ),
-            for (final charge in booking.chosenCharges)
-              SummaryRow(
-                label: charge.name,
-                value: chargeAmountText(charge.amount),
-              ),
-            const Divider(),
-            SummaryRow(
-              label: 'Total',
-              value: formatMoney(booking.totalAmount),
-              bold: true,
-            ),
-            if (booking.possibleCharges.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                'May apply on the day (not in the total)',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-              for (final charge in booking.possibleCharges)
-                SummaryRow(
-                  label: charge.name,
-                  value: chargeAmountText(charge.amount),
-                ),
-            ],
-          ],
-        ),
+        BillSection(booking: booking),
       ],
     );
   }

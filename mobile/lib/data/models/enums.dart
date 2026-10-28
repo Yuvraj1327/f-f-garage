@@ -58,6 +58,53 @@ enum ExtraChargeType implements ApiEnum {
       parseApiEnum(values, raw);
 }
 
+/// The four tabs of the customer's service screen.
+enum CatalogTab implements ApiEnum {
+  mechanic('mechanic', 'Book a Mechanic'),
+  package('package', 'Service Packages'),
+  repair('repair', 'Specific Repair'),
+  engine('engine', 'Engine Repair');
+
+  const CatalogTab(this.apiValue, this.label);
+
+  @override
+  final String apiValue;
+  final String label;
+
+  static CatalogTab fromApiValue(String raw) => parseApiEnum(values, raw);
+}
+
+/// Whether spare parts are in the price.
+enum PartsPolicy implements ApiEnum {
+  serviceOnly('service_only', 'Labour only. Parts are extra and need your approval.'),
+  partsIncluded('parts_included', 'Parts included in the price.'),
+  partsExtra('parts_extra', 'Parts are charged extra, after your approval.');
+
+  const PartsPolicy(this.apiValue, this.description);
+
+  @override
+  final String apiValue;
+  final String description;
+
+  static PartsPolicy fromApiValue(String raw) => parseApiEnum(values, raw);
+}
+
+/// An extra charge request: it is only billed once the customer approves it.
+enum ExtraStatus implements ApiEnum {
+  proposed('proposed', 'Waiting for you'),
+  approved('approved', 'Approved'),
+  declined('declined', 'Declined'),
+  withdrawn('withdrawn', 'Withdrawn');
+
+  const ExtraStatus(this.apiValue, this.label);
+
+  @override
+  final String apiValue;
+  final String label;
+
+  static ExtraStatus fromApiValue(String raw) => parseApiEnum(values, raw);
+}
+
 enum BookingStatus implements ApiEnum {
   pendingPayment('pending_payment'),
   confirmed('confirmed'),
@@ -87,4 +134,18 @@ enum PaymentStatus implements ApiEnum {
   final String apiValue;
 
   static PaymentStatus fromApiValue(String raw) => parseApiEnum(values, raw);
+}
+
+/// Which part of the bill a payment settles.
+enum PaymentKind implements ApiEnum {
+  advance('advance', 'Advance'),
+  balance('balance', 'Balance');
+
+  const PaymentKind(this.apiValue, this.label);
+
+  @override
+  final String apiValue;
+  final String label;
+
+  static PaymentKind fromApiValue(String raw) => parseApiEnum(values, raw);
 }
