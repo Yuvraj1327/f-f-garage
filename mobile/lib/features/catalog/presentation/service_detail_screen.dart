@@ -24,7 +24,10 @@ class ServiceDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final value = ref.watch(browseServiceProvider(serviceId));
     return Scaffold(
-      appBar: AppBar(title: Text(value.valueOrNull?.name ?? 'Service')),
+      appBar: AppBar(
+        title: Text(value.valueOrNull?.name ?? 'Service'),
+        actions: const [CartIconButton()],
+      ),
       bottomNavigationBar: const CartBar(),
       body: SafeArea(
         child: AsyncView<GarageService>(

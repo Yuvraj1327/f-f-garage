@@ -671,6 +671,7 @@ class _CouponCard extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 4),
                 child: FilledButton(
                   key: const ValueKey('coupon-apply'),
+                  style: FilledButton.styleFrom(minimumSize: const Size(88, 48)),
                   onPressed: busy || applying ? null : onApply,
                   child: applying
                       ? const SizedBox(

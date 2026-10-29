@@ -17,11 +17,6 @@ enum NavTab {
   jobs,
   history,
   earnings,
-  // Admin
-  dashboard,
-  adminBookings,
-  drivers,
-  services,
   // Everyone
   settings,
 }
@@ -44,7 +39,7 @@ const _settings = NavItem(
   AppRoutes.settings,
 );
 
-/// The bottom-bar items a role is allowed to see, in order.
+/// The bottom-bar items a role is allowed to see, in order. Admins have none.
 List<NavItem> navItemsFor(UserRole role) {
   switch (role) {
     case UserRole.customer:
@@ -68,17 +63,8 @@ List<NavItem> navItemsFor(UserRole role) {
         _settings,
       ];
     case UserRole.admin:
-      return const [
-        NavItem(NavTab.dashboard, 'Dashboard', Icons.dashboard_outlined,
-            Icons.dashboard, AppRoutes.adminHome),
-        NavItem(NavTab.adminBookings, 'Bookings', Icons.receipt_long_outlined,
-            Icons.receipt_long, AppRoutes.adminBookings),
-        NavItem(NavTab.drivers, 'Drivers', Icons.badge_outlined, Icons.badge,
-            AppRoutes.adminDrivers),
-        NavItem(NavTab.services, 'Services', Icons.build_outlined,
-            Icons.build, AppRoutes.adminServices),
-        _settings,
-      ];
+      // Admins use the sidebar / drawer (see AdminScaffold), not a bottom bar.
+      return const [];
   }
 }
 

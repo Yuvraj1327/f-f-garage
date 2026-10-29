@@ -142,8 +142,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(harness.gateway.lastEmail, 'admin@example.com');
-      expect(find.text('Service areas'), findsOneWidget);
-      expect(find.text('Availability'), findsOneWidget);
+      expect(find.text('Quick actions'), findsOneWidget);
+      expect(find.byKey(const ValueKey('side-areas')), findsOneWidget);
     });
 
     testWidgets('a customer account is refused on the staff sign-in',
@@ -159,7 +159,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(AuthFailure.notStaffAccount.message), findsOneWidget);
-      expect(find.text('Service areas'), findsNothing);
+      expect(find.text('Quick actions'), findsNothing);
       expect(harness.gateway.hasSession, isFalse);
     });
   });

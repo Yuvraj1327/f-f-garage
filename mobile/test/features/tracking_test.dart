@@ -4,7 +4,7 @@ import 'package:ff_garage/data/models/driver.dart';
 import 'package:ff_garage/data/models/enums.dart';
 import 'package:ff_garage/features/booking/presentation/booking_timeline.dart';
 import 'package:ff_garage/features/booking/presentation/booking_widgets.dart';
-import 'package:flutter/material.dart' hide StepState;
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/booking_journey.dart';
@@ -598,7 +598,7 @@ void main() {
       goTo(tester, AppRoutes.notifications);
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('mark-all-read')), findsNothing);
-      expect(find.text('Service areas'), findsOneWidget);
+      expect(find.text('Quick actions'), findsOneWidget);
     });
   });
 }

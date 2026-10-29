@@ -21,7 +21,19 @@ class CatalogRepository {
   // ---- customers ----
   Future<List<GarageService>> browse({VehicleType? vehicleType}) async {
     final rows = await _service.browse(vehicleType: vehicleType?.apiValue);
-    return _parseAll(rows, GarageService.fromJson);
+    // One malformed row must not blank the whole catalogue: skip it.
+    final services = <GarageService>[];
+    for (final row in rows) {
+      try {
+        services.add(GarageService.fromJson(row));
+      } on FormatException {
+        continue;
+      }
+    }
+    if (services.isEmpty && rows.isNotEmpty) {
+      throw ApiException.invalidResponse();
+    }
+    return services;
   }
 
   Future<GarageService> browseOne(String id) async =>

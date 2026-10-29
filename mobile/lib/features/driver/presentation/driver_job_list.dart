@@ -101,33 +101,66 @@ class _DriverJobListState extends ConsumerState<DriverJobList>
       return const ListSkeleton(count: 3);
     }
     if (_error != null && _items.isEmpty) {
-      return ErrorView(message: _error!, onRetry: _reload);
+      // Pull-to-refresh works here too, so a failed load never leaves the
+      // screen stuck.
+      return RefreshIndicator(
+        onRefresh: _reload,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            const SizedBox(height: 48),
+            ErrorView(message: _error!, onRetry: _reload),
+          ],
+        ),
+      );
     }
     if (_items.isEmpty) {
       return RefreshIndicator(
         onRefresh: _reload,
         child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            const SizedBox(height: 80),
-            EmptyView(
-              icon: widget.scope == 'open'
-                  ? Icons.two_wheeler
-                  : Icons.history,
-              message: widget.scope == 'open'
-                  ? 'No jobs assigned to you right now.\nPull down to check again.'
-                  : 'No finished jobs yet.',
-            ),
+            const SizedBox(height: 48),
+            _EmptyJobs(open: widget.scope == 'open'),
           ],
         ),
       );
     }
     final hasMore = _items.length < _total;
+    // A refresh that failed keeps the old list but says so.
+    final banner = _error == null ? 0 : 1;
     return RefreshIndicator(
       onRefresh: _reload,
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(4, 4, 4, 24),
-        itemCount: _items.length + (hasMore ? 1 : 0),
-        itemBuilder: (context, index) {
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+        itemCount: banner + _items.length + (hasMore ? 1 : 0),
+        itemBuilder: (context, rawIndex) {
+          if (banner == 1 && rawIndex == 0) {
+            return Padding(
+              key: const ValueKey('refresh-error'),
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Material(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(12),
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.error_outline,
+                      color: Theme.of(context).colorScheme.onErrorContainer),
+                  title: Text(
+                    '${_error!} Showing the last list.',
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer),
+                  ),
+                  trailing: TextButton(
+                    onPressed: _reload,
+                    child: const Text('Retry'),
+                  ),
+                ),
+              ),
+            );
+          }
+          final index = rawIndex - banner;
           if (index == _items.length) {
             return Padding(
               padding: const EdgeInsets.all(16),
@@ -141,76 +174,145 @@ class _DriverJobListState extends ConsumerState<DriverJobList>
               ),
             );
           }
-          return _JobTile(job: _items[index]);
+          return _JobTile(job: _items[index], finished: widget.scope == 'history');
         },
       ),
     );
   }
 }
 
+class _EmptyJobs extends StatelessWidget {
+  const _EmptyJobs({required this.open});
+
+  final bool open;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              color: scheme.secondaryContainer,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              open ? Icons.two_wheeler : Icons.history,
+              size: 40,
+              color: scheme.secondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            open
+                ? 'No jobs assigned to you right now.\nPull down to check again.'
+                : 'No finished jobs yet.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One job: booking code and status, the service, the customer, the vehicle,
+/// when and where. Finished jobs are drawn a little quieter.
 class _JobTile extends StatelessWidget {
-  const _JobTile({required this.job});
+  const _JobTile({required this.job, required this.finished});
 
   final DriverJob job;
+  final bool finished;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
+    Widget info(IconData icon, String text, {int lines = 1}) => Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 18, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  text,
+                  style: textTheme.bodyMedium,
+                  maxLines: lines,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 6),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         key: ValueKey('job-${job.id}'),
         onTap: () => context.push(AppRoutes.driverBooking(job.id)),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${job.code} - ${job.serviceName}',
-                      style: textTheme.titleMedium,
+          child: Opacity(
+            opacity: finished ? 0.85 : 1,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        job.code,
+                        style: textTheme.labelLarge
+                            ?.copyWith(color: scheme.onSurfaceVariant),
+                      ),
                     ),
+                    BookingStatusChip(status: job.status),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  job.serviceName,
+                  style: textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                if (job.packageName.isNotEmpty)
+                  Text(job.packageName, style: textTheme.bodySmall),
+                const SizedBox(height: 6),
+                info(
+                  Icons.person_outline,
+                  job.customerPhone.isEmpty
+                      ? job.customerName
+                      : '${job.customerName} - ${job.customerPhone}',
+                ),
+                info(Icons.two_wheeler, vehicleLabel(job.vehicleType)),
+                info(Icons.schedule,
+                    '${formatDate(job.date)}, ${job.timeLabel}'),
+                info(Icons.place_outlined, jobAddressLine(job), lines: 2),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        !finished && job.nextStatus != null
+                            ? 'Next: ${driverStepLabel(job.nextStatus!)}'
+                            : 'View details',
+                        style: textTheme.labelLarge
+                            ?.copyWith(color: scheme.primary),
+                      ),
+                      Icon(Icons.chevron_right, size: 18, color: scheme.primary),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  BookingStatusChip(status: job.status),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(job.customerName, style: textTheme.bodyMedium),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.event_outlined,
-                      size: 16, color: scheme.onSurfaceVariant),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text('${formatDate(job.date)}, ${job.timeLabel}'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.place_outlined,
-                      size: 16, color: scheme.onSurfaceVariant),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      jobAddressLine(job),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

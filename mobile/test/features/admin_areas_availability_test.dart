@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fakes_catalog.dart';
 import '../support/pump_app.dart';
+import '../support/booking_journey.dart';
 
 ServiceArea area({
   String id = 'a1',
@@ -42,7 +43,7 @@ void main() {
         areas: FakeServiceAreaRepository(areas),
       );
       await harness.pump(tester);
-      await tapText(tester, 'Service areas');
+      await tapKey(tester, 'side-areas');
       return harness;
     }
 
@@ -140,7 +141,7 @@ void main() {
         availability: FakeAvailabilityRepository(slots: slots),
       );
       await harness.pump(tester);
-      await tapText(tester, 'Availability');
+      await tapKey(tester, 'side-availability');
       return harness;
     }
 

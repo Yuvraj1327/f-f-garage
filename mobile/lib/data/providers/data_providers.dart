@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/core_providers.dart';
+import '../repositories/dashboard_repository.dart';
 import '../repositories/admin_booking_repository.dart';
 import '../repositories/admin_driver_repository.dart';
 import '../repositories/auth_repository.dart';
@@ -100,6 +101,10 @@ final adminBookingRepositoryProvider = Provider<AdminBookingRepository>(
   (ref) => AdminBookingRepository(
     AdminBookingApiService(ref.watch(apiClientProvider)),
   ),
+);
+
+final dashboardRepositoryProvider = Provider<DashboardRepository>(
+  (ref) => DashboardRepository(ref.watch(apiClientProvider)),
 );
 
 final adminDriverRepositoryProvider = Provider<AdminDriverRepository>(

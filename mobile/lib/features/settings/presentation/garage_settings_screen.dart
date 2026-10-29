@@ -8,6 +8,7 @@ import '../../../data/providers/data_providers.dart';
 import '../../auth/presentation/widgets/auth_widgets.dart';
 import '../../support/providers/support_providers.dart';
 import '../providers/garage_settings_providers.dart';
+import '../../admin/presentation/admin_scaffold.dart';
 
 /// Administrators only: the garage's name and contact details. Saved through
 /// `PUT /admin/garage-settings`; customers and drivers see them on Help &
@@ -18,8 +19,8 @@ class GarageSettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(garageSettingsProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Garage details')),
+    return AdminScaffold(
+      section: AdminSection.garage,
       body: SafeArea(
         child: AsyncView<GarageSettings>(
           value: settings,

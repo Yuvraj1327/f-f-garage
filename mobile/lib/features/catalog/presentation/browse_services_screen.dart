@@ -43,9 +43,13 @@ class _BrowseServicesScreenState extends ConsumerState<BrowseServicesScreen> {
     final services = ref.watch(browseServicesProvider(type));
     return DefaultTabController(
       length: CatalogTab.values.length,
-      initialIndex: CatalogTab.values.indexOf(CatalogTab.package),
+      // Opens on "Book a Mechanic", which holds the 3 default services.
+      initialIndex: CatalogTab.values.indexOf(CatalogTab.mechanic),
       child: Scaffold(
-        appBar: AppBar(title: const Text('2-Wheeler Services')),
+        appBar: AppBar(
+          title: const Text('2-Wheeler Services'),
+          actions: const [CartIconButton()],
+        ),
         bottomNavigationBar: const CartBar(),
         body: SafeArea(
           child: Column(

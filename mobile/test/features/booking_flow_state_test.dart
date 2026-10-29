@@ -44,7 +44,7 @@ void main() {
     expect(state().isComplete, isTrue);
   });
 
-  test('starting again drops everything and issues a new request id', () {
+  test('starting again drops add-ons and notes, keeps the address, and issues a new request id', () {
     final s = service();
     flow().start(s, s.packages.first);
     flow().setAddress(_address);
@@ -54,8 +54,8 @@ void main() {
     final firstId = state().requestId;
 
     flow().start(s, s.packages.first);
-    expect(state().address, isNull);
-    expect(state().schedule, isNull);
+    // The address and time stay (the customer does not type them again).
+    expect(state().address, isNotNull);
     expect(state().extraChargeIds, isEmpty);
     expect(state().notes, isEmpty);
     expect(state().requestId, isNot(firstId));

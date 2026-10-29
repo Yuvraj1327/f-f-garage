@@ -14,6 +14,7 @@ from app.api.deps import (
     get_booking_service,
     get_catalog_repository,
     get_coupon_repository,
+    get_dashboard_repository,
     get_extra_request_repository,
     get_garage_settings_repository,
     get_image_storage,
@@ -26,6 +27,7 @@ from app.api.deps import (
     get_tracking_repository,
     get_vehicle_repository,
 )
+from app.db.dashboard_repository import DashboardFigures
 from app.domain.enums import UserRole
 from app.main import create_app
 from app.services.availability_service import AvailabilityService
@@ -60,6 +62,14 @@ def headers_for(profile) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+class FakeDashboard:
+    def __init__(self) -> None:
+        self.value = DashboardFigures()
+
+    def figures(self) -> DashboardFigures:
+        return self.value
+
+
 class Ctx:
     """An app with in-memory repositories and one user of each role."""
 
@@ -80,6 +90,7 @@ class Ctx:
         self.coupons = FakeCoupons()
         self.extras = FakeExtraRequests()
         self.refunds = FakeRefunds(self.payments)
+        self.dashboard = FakeDashboard()
         self.bookings.coupons = self.coupons
         self.bookings.on_cancelled.append(self.extras.withdraw_open)
         self.assignments = FakeAssignmentRepository(self.bookings, self.profiles, self.payments)
@@ -105,6 +116,7 @@ class Ctx:
         app.dependency_overrides[get_coupon_repository] = lambda: self.coupons
         app.dependency_overrides[get_extra_request_repository] = lambda: self.extras
         app.dependency_overrides[get_refund_repository] = lambda: self.refunds
+        app.dependency_overrides[get_dashboard_repository] = lambda: self.dashboard
         app.dependency_overrides[get_assignment_repository] = lambda: self.assignments
         app.dependency_overrides[get_tracking_repository] = lambda: self.tracking
         app.dependency_overrides[get_notification_repository] = lambda: self.tracking

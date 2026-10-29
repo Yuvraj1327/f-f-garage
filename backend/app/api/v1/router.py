@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     admin_availability,
     admin_catalog,
+    admin_dashboard,
     admin_drivers,
     admin_garage,
     admin_service_areas,
@@ -24,6 +25,7 @@ from app.api.v1.endpoints import (
 api_router = APIRouter()
 api_router.include_router(health.router)
 api_router.include_router(profiles.router)
+api_router.include_router(admin_dashboard.router)
 api_router.include_router(admin_drivers.router)
 api_router.include_router(admin_garage.router)
 api_router.include_router(catalog.router)

@@ -4,7 +4,9 @@ import 'package:ff_garage/data/models/booking.dart';
 import 'package:ff_garage/data/models/driver.dart';
 import 'package:ff_garage/data/models/driver_job.dart';
 import 'package:ff_garage/data/models/enums.dart';
+import 'package:ff_garage/data/models/dashboard.dart';
 import 'package:ff_garage/data/repositories/admin_booking_repository.dart';
+import 'package:ff_garage/data/repositories/dashboard_repository.dart';
 import 'package:ff_garage/data/repositories/admin_driver_repository.dart';
 import 'package:ff_garage/data/repositories/driver_work_repository.dart';
 
@@ -351,5 +353,42 @@ class FakeDriverWorkRepository implements DriverWorkRepository {
     );
     jobs = [for (final j in jobs) j.id == id ? next : j];
     return next;
+  }
+}
+
+
+/// The admin dashboard figures, counted from the fake bookings and drivers the
+/// same way the server's SQL function does. Set [error] to make it fail.
+class FakeDashboardRepository implements DashboardRepository {
+  FakeDashboardRepository(
+    this.bookings,
+    this.drivers, {
+    this.collected = 0,
+    this.refunded = 0,
+  });
+
+  final FakeAdminBookingRepository bookings;
+  final FakeAdminDriverRepository drivers;
+  double collected;
+  double refunded;
+  ApiException? error;
+  int loads = 0;
+
+  @override
+  Future<AdminDashboard> load() async {
+    loads++;
+    if (error != null) throw error!;
+    final counts = {for (final s in BookingStatus.values) s: 0};
+    for (final b in bookings.bookings) {
+      counts[b.status] = counts[b.status]! + 1;
+    }
+    return AdminDashboard(
+      total: bookings.bookings.length,
+      byStatus: counts,
+      revenueCollected: collected,
+      revenueRefunded: refunded,
+      revenueNet: collected - refunded,
+      activeDrivers: drivers.drivers.where((d) => d.isActive).length,
+    );
   }
 }

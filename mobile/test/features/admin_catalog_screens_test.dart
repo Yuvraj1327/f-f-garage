@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../support/fakes.dart';
 import '../support/fakes_catalog.dart';
 import '../support/pump_app.dart';
+import '../support/booking_journey.dart';
 
 Future<AppHarness> _openServices(
   WidgetTester tester, {
@@ -12,17 +13,17 @@ Future<AppHarness> _openServices(
 }) async {
   final harness = AppHarness(role: UserRole.admin, catalog: catalog);
   await harness.pump(tester);
-  await tapText(tester, 'Services');
+  await tapKey(tester, 'side-services');
   return harness;
 }
 
 void main() {
-  testWidgets('admin home offers services, areas and availability',
+  testWidgets('the admin sidebar offers services, areas and availability',
       (tester) async {
     await AppHarness(role: UserRole.admin).pump(tester);
-    expect(find.textContaining('Services, packages'), findsOneWidget);
-    expect(find.text('Service areas'), findsOneWidget);
-    expect(find.text('Availability'), findsOneWidget);
+    for (final key in ['side-services', 'side-areas', 'side-availability']) {
+      expect(find.byKey(ValueKey(key)), findsOneWidget, reason: key);
+    }
   });
 
   testWidgets('lists services including inactive ones, with a filter',

@@ -13,6 +13,7 @@ import '../../../data/models/catalog.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/providers/data_providers.dart';
 import '../providers/admin_providers.dart';
+import '../presentation/admin_scaffold.dart';
 
 /// All services (bike and scooter), including inactive ones, drawn with the
 /// same cards and categories customers see, plus the management controls.
@@ -34,19 +35,16 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
     final services = ref.watch(adminServicesProvider(_filter));
     final categories = ref.watch(adminCategoriesProvider).valueOrNull ?? const [];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Services'),
-        actions: [
-          IconButton(
-            key: const ValueKey('open-categories'),
-            tooltip: 'Categories',
-            icon: const Icon(Icons.category_outlined),
-            onPressed: () => context.push(AppRoutes.adminCategories),
-          ),
-        ],
-      ),
-      bottomNavigationBar: navFor(ref, NavTab.services),
+    return AdminScaffold(
+      section: AdminSection.services,
+      actions: [
+        IconButton(
+          key: const ValueKey('open-categories'),
+          tooltip: 'Categories',
+          icon: const Icon(Icons.category_outlined),
+          onPressed: () => context.push(AppRoutes.adminCategories),
+        ),
+      ],
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(AppRoutes.adminServiceNew),
         icon: const Icon(Icons.add),

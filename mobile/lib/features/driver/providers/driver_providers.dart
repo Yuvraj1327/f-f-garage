@@ -28,6 +28,9 @@ class DriverSummary {
     required this.open,
     required this.completedThisMonth,
     required this.finishedTotal,
+    this.completedThisWeek = 0,
+    this.completedTotal = 0,
+    this.recentCompleted = const [],
   });
 
   /// Jobs scheduled for today (open or finished).
@@ -42,6 +45,15 @@ class DriverSummary {
 
   /// Every finished booking (completed or cancelled) the driver has had.
   final int finishedTotal;
+
+  /// Completed bookings dated in the last 7 days (today included).
+  final int completedThisWeek;
+
+  /// Completed bookings among the latest finished ones loaded (up to 100).
+  final int completedTotal;
+
+  /// The newest completed jobs, for the Earnings tab.
+  final List<DriverJob> recentCompleted;
 }
 
 final driverSummaryProvider = FutureProvider.autoDispose<DriverSummary>((ref) async {
@@ -66,5 +78,17 @@ final driverSummaryProvider = FutureProvider.autoDispose<DriverSummary>((ref) as
             j.date.month == now.month)
         .length,
     finishedTotal: history.total,
+    completedThisWeek: history.items
+        .where((j) =>
+            j.status == BookingStatus.completed &&
+            !j.date.isBefore(DateTime(now.year, now.month, now.day - 6)) &&
+            !j.date.isAfter(DateTime(now.year, now.month, now.day)))
+        .length,
+    completedTotal:
+        history.items.where((j) => j.status == BookingStatus.completed).length,
+    recentCompleted: history.items
+        .where((j) => j.status == BookingStatus.completed)
+        .take(5)
+        .toList(),
   );
 });

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/catalog.dart';
@@ -9,8 +11,14 @@ import '../../vehicles/providers/vehicle_providers.dart';
 /// The family key is the vehicle-type filter; null = all.
 final browseServicesProvider = FutureProvider.autoDispose
     .family<List<GarageService>, VehicleType?>(
-  (ref, type) =>
-      ref.watch(catalogRepositoryProvider).browse(vehicleType: type),
+  (ref, type) {
+    // Keep the list for a couple of minutes after the screen closes, so going
+    // back and forth does not re-download it; pull-to-refresh and Retry reload.
+    final link = ref.keepAlive();
+    final timer = Timer(const Duration(minutes: 2), link.close);
+    ref.onDispose(timer.cancel);
+    return ref.watch(catalogRepositoryProvider).browse(vehicleType: type);
+  },
 );
 
 /// The active categories in the admin's order (drives the repair rail).

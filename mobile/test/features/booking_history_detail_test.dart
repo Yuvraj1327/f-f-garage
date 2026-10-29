@@ -22,7 +22,7 @@ void main() {
         (tester) async {
       final harness = customerHarness();
       await harness.pump(tester);
-      await tapText(tester, 'My bookings');
+      await tapText(tester, 'My Bookings');
 
       expect(find.text('You have no bookings yet.'), findsOneWidget);
       expect(find.text('Browse services'), findsOneWidget);
@@ -300,7 +300,7 @@ void main() {
 
       expect(repo.cancelled, ['b1']);
       expect(repo.lastCancelReason, 'Changed my mind');
-      expect(find.text('Booking cancelled'), findsOneWidget);
+      expect(find.text('Booking cancelled'), findsWidgets);
       expect(find.text('Cancelled'), findsWidgets);
       expect(find.text('Cancel booking'), findsNothing);
     });

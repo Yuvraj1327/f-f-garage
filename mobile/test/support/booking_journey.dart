@@ -156,6 +156,7 @@ bool buttonEnabled(WidgetTester tester, String label) =>
 /// Home -> Browse services -> service -> add the package, then the address step.
 Future<void> startBooking(WidgetTester tester) async {
   await tapText(tester, 'Browse services');
+  await tapText(tester, 'Service Packages');
   await tapText(tester, 'General Service');
   await tapKey(tester, 'book-p1');
   goTo(tester, AppRoutes.bookAddress);

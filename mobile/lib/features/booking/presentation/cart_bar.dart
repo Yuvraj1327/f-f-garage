@@ -6,6 +6,26 @@ import '../../../app/router/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../providers/booking_providers.dart';
 
+/// The cart icon for app bars, with a badge while a service is in the cart.
+class CartIconButton extends ConsumerWidget {
+  const CartIconButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(bookingFlowProvider.select((f) => f.hasPackage)) ? 1 : 0;
+    return IconButton(
+      key: const ValueKey('cart-icon'),
+      tooltip: count > 0 ? 'Cart ($count)' : 'Cart',
+      icon: Badge(
+        isLabelVisible: count > 0,
+        label: Text('$count'),
+        child: const Icon(Icons.shopping_cart_outlined),
+      ),
+      onPressed: () => context.push(AppRoutes.cart),
+    );
+  }
+}
+
 /// The sticky bar at the bottom of the service screens once a service has been
 /// added: what is in the cart, its price, and the way to checkout. A booking
 /// holds one service, so adding another replaces it.
@@ -65,6 +85,7 @@ class CartBar extends ConsumerWidget {
               FilledButton(
                 key: const ValueKey('cart-checkout'),
                 style: FilledButton.styleFrom(
+                  minimumSize: const Size(96, 44),
                   backgroundColor: Theme.of(context).brightness == Brightness.dark
                       ? scheme.secondary
                       : Colors.white,
@@ -72,8 +93,8 @@ class CartBar extends ConsumerWidget {
                       ? scheme.onSecondary
                       : scheme.primary,
                 ),
-                onPressed: () => context.push(AppRoutes.checkout),
-                child: const Text('Checkout'),
+                onPressed: () => context.push(AppRoutes.cart),
+                child: const Text('View cart'),
               ),
             ],
           ),

@@ -14,6 +14,7 @@ void main() {
       await tapText(tester, 'Browse services');
       expect(find.byKey(const ValueKey('cart-bar')), findsNothing);
 
+      await tapText(tester, 'Service Packages');
       await tapText(tester, 'General Service');
       await tapKey(tester, 'book-p1');
       goTo(tester, AppRoutes.browseServices);
@@ -24,12 +25,47 @@ void main() {
       expect(find.byKey(const ValueKey('cart-bar')), findsNothing);
     });
 
+    testWidgets('the cart page lists the service, subtotal and goes to checkout',
+        (tester) async {
+      useTallScreen(tester);
+      await customerHarness().pump(tester);
+      await tapText(tester, 'Browse services');
+      await tapText(tester, 'Service Packages');
+      await tapText(tester, 'General Service');
+      await tapKey(tester, 'book-p1');
+      goTo(tester, AppRoutes.browseServices);
+      await tester.pumpAndSettle();
+
+      await tapKey(tester, 'cart-icon');
+      expect(find.byKey(const ValueKey('cart-item')), findsOneWidget);
+      expect(find.byKey(const ValueKey('cart-subtotal')), findsOneWidget);
+
+      await tapKey(tester, 'cart-continue');
+      expect(find.byKey(const ValueKey('estimated-total')), findsOneWidget);
+    });
+
+    testWidgets('removing the service empties the cart', (tester) async {
+      useTallScreen(tester);
+      await customerHarness().pump(tester);
+      await tapText(tester, 'Browse services');
+      await tapText(tester, 'Service Packages');
+      await tapText(tester, 'General Service');
+      await tapKey(tester, 'book-p1');
+      goTo(tester, AppRoutes.cart);
+      await tester.pumpAndSettle();
+
+      await tapKey(tester, 'cart-item-remove');
+      expect(find.text('Your cart is empty. Add a service to get started.'),
+          findsOneWidget);
+    });
+
     testWidgets('checkout shows the estimate and the 20% advance, and asks '
         'for a location before it can be confirmed', (tester) async {
       useTallScreen(tester);
       final harness = customerHarness();
       await harness.pump(tester);
       await tapText(tester, 'Browse services');
+      await tapText(tester, 'Service Packages');
       await tapText(tester, 'General Service');
       await tapKey(tester, 'book-p1');
       goTo(tester, AppRoutes.checkout);

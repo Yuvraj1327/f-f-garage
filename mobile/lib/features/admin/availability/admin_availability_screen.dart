@@ -9,6 +9,7 @@ import '../../../core/widgets/form_widgets.dart';
 import '../../../data/models/availability.dart';
 import '../../../data/providers/data_providers.dart';
 import '../providers/admin_providers.dart';
+import '../presentation/admin_scaffold.dart';
 
 /// Time slots (the weekly routine) and closures / special openings (changes
 /// for particular dates).
@@ -19,12 +20,10 @@ class AdminAvailabilityScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Availability'),
-          bottom: const TabBar(
-            tabs: [Tab(text: 'Time slots'), Tab(text: 'Closures')],
-          ),
+      child: AdminScaffold(
+        section: AdminSection.availability,
+        bottom: const TabBar(
+          tabs: [Tab(text: 'Time slots'), Tab(text: 'Closures')],
         ),
         body: const SafeArea(
           child: TabBarView(children: [_SlotsTab(), _ClosuresTab()]),

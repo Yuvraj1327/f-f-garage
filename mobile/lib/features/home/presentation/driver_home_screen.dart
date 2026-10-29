@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/app_nav.dart';
+import '../../../core/widgets/content_width.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../driver/presentation/driver_job_list.dart';
 import '../../driver/providers/driver_providers.dart';
@@ -18,21 +19,23 @@ class DriverHomeScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('My Jobs')),
       bottomNavigationBar: navFor(ref, NavTab.jobs),
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Hello, ${profile?.displayName ?? 'driver'}',
-                  style: Theme.of(context).textTheme.titleMedium,
+        child: ContentWidth(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Hello, ${profile?.displayName ?? 'driver'}',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
               ),
-            ),
-            const _SummaryCard(),
-            const Expanded(child: DriverJobList(scope: 'open')),
-          ],
+              const _SummaryCard(),
+              const Expanded(child: DriverJobList(scope: 'open')),
+            ],
+          ),
         ),
       ),
     );
@@ -52,19 +55,23 @@ class _SummaryCard extends ConsumerWidget {
     }
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    Widget figure(String value, String label, Color color) => Expanded(
+    Widget figure(IconData icon, String value, String label, Color color) =>
+        Expanded(
           child: Column(
             children: [
+              Icon(icon, size: 20, color: color),
+              const SizedBox(height: 4),
               Text(
                 value,
-                style: textTheme.headlineMedium?.copyWith(color: color),
+                style: textTheme.headlineSmall
+                    ?.copyWith(color: color, fontWeight: FontWeight.w800),
               ),
               Text(label, style: textTheme.bodySmall),
             ],
           ),
         );
     return Card(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         child: Column(
@@ -76,13 +83,12 @@ class _SummaryCard extends ConsumerWidget {
             ),
             Row(
               children: [
-                figure('${summary.today}', 'Today', scheme.primary),
-                figure(
-                  '${summary.completedToday}',
-                  'Completed',
-                  scheme.secondary,
-                ),
-                figure('${summary.open}', 'Open jobs', scheme.tertiary),
+                figure(Icons.today_outlined, '${summary.today}', 'Today',
+                    scheme.primary),
+                figure(Icons.check_circle_outline, '${summary.completedToday}',
+                    'Completed', scheme.secondary),
+                figure(Icons.pending_actions_outlined, '${summary.open}',
+                    'Open jobs', scheme.tertiary),
               ],
             ),
           ],

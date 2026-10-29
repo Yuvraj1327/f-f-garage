@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/availability.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/catalog.dart';
+import '../../../data/models/dashboard.dart';
 import '../../../data/models/driver.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/service_area.dart';
@@ -96,42 +97,21 @@ void refreshAdminDrivers(WidgetRef ref) {
   ref.invalidate(adminDriverProvider);
 }
 
-/// Booking and driver figures for the admin dashboard, counted by the server
-/// (the list endpoint's `total`), so no booking data is downloaded for them.
-class AdminStats {
-  const AdminStats({
-    required this.total,
-    required this.completed,
-    required this.pending,
-    required this.cancelled,
-    required this.activeDrivers,
-  });
-
-  final int total;
-  final int completed;
-
-  /// Waiting for payment or for a driver.
-  final int pending;
-  final int cancelled;
-  final int activeDrivers;
-}
-
-final adminStatsProvider = FutureProvider.autoDispose<AdminStats>((ref) async {
+/// Bookings per status, revenue and active drivers, worked out by the server.
+final adminDashboardProvider = FutureProvider.autoDispose<AdminDashboard>((ref) {
   ref.watch(adminBookingsRefreshProvider);
-  final bookings = ref.watch(adminBookingRepositoryProvider);
-  Future<int> count([List<BookingStatus>? statuses]) async =>
-      (await bookings.list(statuses: statuses, limit: 1)).total;
-  final total = await count();
-  final completed = await count([BookingStatus.completed]);
-  final pending =
-      await count([BookingStatus.pendingPayment, BookingStatus.confirmed]);
-  final cancelled = await count([BookingStatus.cancelled]);
-  final drivers = await ref.watch(adminDriverRepositoryProvider).list();
-  return AdminStats(
-    total: total,
-    completed: completed,
-    pending: pending,
-    cancelled: cancelled,
-    activeDrivers: drivers.where((d) => d.isActive).length,
-  );
+  return ref.watch(dashboardRepositoryProvider).load();
+});
+
+/// How many recent bookings the dashboard lists.
+const int dashboardRecentCount = 6;
+
+/// The newest bookings, for the dashboard (the server lists newest first).
+final adminRecentBookingsProvider =
+    FutureProvider.autoDispose<List<Booking>>((ref) async {
+  ref.watch(adminBookingsRefreshProvider);
+  final page = await ref
+      .watch(adminBookingRepositoryProvider)
+      .list(limit: dashboardRecentCount);
+  return page.items;
 });

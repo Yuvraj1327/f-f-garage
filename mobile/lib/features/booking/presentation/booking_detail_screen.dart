@@ -127,8 +127,9 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
         ],
       ),
     );
+    // Not disposed here: the dialog's TextField is still animating out and
+    // would read a disposed controller. Nothing listens to it afterwards.
     final text = reason.text;
-    reason.dispose();
     if (confirmed != true || !mounted) {
       return;
     }

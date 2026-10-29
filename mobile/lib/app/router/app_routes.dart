@@ -32,6 +32,7 @@ abstract final class AppRoutes {
   static String serviceDetail(String id) => '/home/services/$id';
 
   // Booking flow (a customer chooses a package first, then these three steps)
+  static const String cart = '/home/cart';
   static const String checkout = '/home/checkout';
   static const String bookAddress = '/home/book-address';
   static const String bookSchedule = '/home/book-schedule';

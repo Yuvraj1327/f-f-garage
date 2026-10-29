@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/booking_journey.dart';
-import '../support/fakes.dart';
 import '../support/fakes_driver.dart';
 import '../support/fakes_garage.dart';
 import '../support/pump_app.dart';
@@ -32,7 +31,11 @@ Brightness _brightness(WidgetTester tester) =>
     Theme.of(tester.element(find.byType(Scaffold).first)).brightness;
 
 Future<void> _openSettings(WidgetTester tester) async {
-  await tester.tap(find.byKey(const ValueKey('nav-settings')));
+  final bottom = find.byKey(const ValueKey('nav-settings'));
+  // Admins have the sidebar instead of a bottom bar.
+  await tester.tap(bottom.evaluate().isNotEmpty
+      ? bottom
+      : find.byKey(const ValueKey('side-settings')));
   await tester.pumpAndSettle();
 }
 
@@ -45,8 +48,8 @@ void main() {
           ['Home', 'My Bookings', 'Support', 'Settings']);
       expect(labels(UserRole.driver),
           ['My Jobs', 'History', 'Earnings', 'Settings']);
-      expect(labels(UserRole.admin),
-          ['Dashboard', 'Bookings', 'Drivers', 'Services', 'Settings']);
+      expect(labels(UserRole.admin), isEmpty,
+          reason: 'admins use the sidebar, not a bottom bar');
     });
 
     testWidgets('customer bar', (tester) async {
@@ -78,35 +81,9 @@ void main() {
       expect(find.textContaining('No jobs assigned'), findsOneWidget);
     });
 
-    testWidgets('admin bar opens the management screens', (tester) async {
+    testWidgets('admin has no bottom bar', (tester) async {
       await AppHarness(role: UserRole.admin).pump(tester);
-      expect(_navLabels(tester),
-          ['Dashboard', 'Bookings', 'Drivers', 'Services', 'Settings']);
-
-      await tester.tap(_nav('Drivers'));
-      await tester.pumpAndSettle();
-      expect(find.text('Add driver'), findsOneWidget);
-      expect(_navLabels(tester).length, 5);
-
-      await tester.tap(_nav('Services'));
-      await tester.pumpAndSettle();
-      expect(find.text('Add service'), findsOneWidget);
-
-      await tester.tap(_nav('Bookings'));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('booking-search')), findsOneWidget);
-
-      await tester.tap(_nav('Dashboard'));
-      await tester.pumpAndSettle();
-      expect(find.text('Service areas'), findsOneWidget);
-    });
-
-    testWidgets('the other admin modules stay reachable from the dashboard',
-        (tester) async {
-      await AppHarness(role: UserRole.admin).pump(tester);
-      expect(find.text('Service areas'), findsOneWidget);
-      expect(find.text('Availability'), findsOneWidget);
-      expect(find.text('Garage details'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
     });
   });
 
@@ -542,10 +519,10 @@ void main() {
       expect(find.byKey(const ValueKey('garage-name')), findsOneWidget);
     });
 
-    testWidgets('opens from the dashboard too', (tester) async {
+    testWidgets('opens from the sidebar too', (tester) async {
       useTallScreen(tester);
       await AppHarness(role: UserRole.admin).pump(tester);
-      await tapText(tester, 'Garage details');
+      await tapKey(tester, 'side-garage');
       expect(find.byKey(const ValueKey('garage-name')), findsOneWidget);
     });
   });
@@ -573,7 +550,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Completed today'), findsOneWidget);
-      expect(find.text('Jobs finished in total'), findsOneWidget);
+      expect(find.text('Finished in total'), findsOneWidget);
       expect(find.textContaining('Payouts are not recorded'), findsOneWidget);
       expect(find.textContaining('₹'), findsNothing);
     });

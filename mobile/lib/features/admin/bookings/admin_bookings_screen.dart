@@ -14,6 +14,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/providers/data_providers.dart';
 import '../../booking/presentation/booking_widgets.dart';
 import '../providers/admin_providers.dart';
+import '../presentation/admin_scaffold.dart';
 
 const int _pageSize = 25;
 
@@ -124,9 +125,8 @@ class _AdminBookingsScreenState extends ConsumerState<AdminBookingsScreen> {
   Widget build(BuildContext context) {
     // A booking or assignment changed on another screen: reload.
     ref.listen<int>(adminBookingsRefreshProvider, (_, __) => _reload());
-    return Scaffold(
-      appBar: AppBar(title: const Text('Bookings')),
-      bottomNavigationBar: navFor(ref, NavTab.adminBookings),
+    return AdminScaffold(
+      section: AdminSection.bookings,
       body: SafeArea(
         child: Column(
           children: [

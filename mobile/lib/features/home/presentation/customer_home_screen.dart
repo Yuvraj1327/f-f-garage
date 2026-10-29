@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../booking/presentation/cart_bar.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
@@ -43,6 +44,7 @@ class CustomerHomeScreen extends ConsumerWidget {
           ],
         ),
         actions: [
+          const CartIconButton(),
           const NotificationBell(),
           IconButton(
             tooltip: 'Profile',

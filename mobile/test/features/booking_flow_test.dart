@@ -25,7 +25,7 @@ void main() {
     testWidgets('home links to My bookings', (tester) async {
       final harness = customerHarness();
       await harness.pump(tester);
-      expect(find.text('My bookings'), findsOneWidget);
+      expect(find.text('My Bookings'), findsOneWidget);
     });
 
     testWidgets('booking screens opened without a package say so',

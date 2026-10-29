@@ -8,6 +8,7 @@ import '../../../core/widgets/form_widgets.dart';
 import '../../../data/models/service_area.dart';
 import '../../../data/providers/data_providers.dart';
 import '../providers/admin_providers.dart';
+import '../presentation/admin_scaffold.dart';
 
 /// PIN codes where doorstep service is available: add, edit, activate or
 /// deactivate, remove.
@@ -57,8 +58,8 @@ class _AdminAreasScreenState extends ConsumerState<AdminAreasScreen> {
   Widget build(BuildContext context) {
     final areas = ref.watch(adminAreasProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Service areas')),
+    return AdminScaffold(
+      section: AdminSection.areas,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openForm(),
         icon: const Icon(Icons.add),

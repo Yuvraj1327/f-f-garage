@@ -9,6 +9,7 @@ import '../../../core/widgets/form_widgets.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../data/models/driver.dart';
 import '../providers/admin_providers.dart';
+import '../presentation/admin_scaffold.dart';
 
 /// Every driver account with its status and how many bookings it still has.
 class AdminDriversScreen extends ConsumerWidget {
@@ -17,9 +18,8 @@ class AdminDriversScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final drivers = ref.watch(adminDriversProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Drivers')),
-      bottomNavigationBar: navFor(ref, NavTab.drivers),
+    return AdminScaffold(
+      section: AdminSection.drivers,
       floatingActionButton: FloatingActionButton.extended(
         key: const ValueKey('add-driver'),
         onPressed: () => context.push(AppRoutes.adminDriverNew),

@@ -37,6 +37,7 @@ class FakeGarageSettingsRepository implements GarageSettingsRepository {
     required String email,
     required String address,
     required String hours,
+    String refundPolicy = '',
   }) async {
     if (error != null) throw error!;
     saves++;

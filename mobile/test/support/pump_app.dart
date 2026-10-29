@@ -34,6 +34,7 @@ class AppHarness {
     FakeCheckoutLauncher? launcher,
     FakeAdminBookingRepository? adminBookings,
     FakeAdminDriverRepository? adminDrivers,
+    FakeDashboardRepository? dashboard,
     FakeDriverWorkRepository? driverWork,
     FakeNotificationRepository? notifications,
     FakeSupportRepository? support,
@@ -65,6 +66,8 @@ class AppHarness {
         areas = areas ?? FakeServiceAreaRepository([]),
         availability = availability ?? FakeAvailabilityRepository() {
     this.paymentRepo = paymentRepo ?? FakePaymentRepository(this.bookingRepo);
+    this.dashboard =
+        dashboard ?? FakeDashboardRepository(this.adminBookings, this.adminDrivers);
   }
 
   final UserRole role;
@@ -76,6 +79,7 @@ class AppHarness {
   final FakeCheckoutLauncher launcher;
   final FakeAdminBookingRepository adminBookings;
   final FakeAdminDriverRepository adminDrivers;
+  late final FakeDashboardRepository dashboard;
   final FakeDriverWorkRepository driverWork;
   final FakeNotificationRepository notifications;
   final FakeSupportRepository support;
@@ -130,6 +134,7 @@ class AppHarness {
           checkoutLauncherProvider.overrideWithValue(launcher),
           adminBookingRepositoryProvider.overrideWithValue(adminBookings),
           adminDriverRepositoryProvider.overrideWithValue(adminDrivers),
+          dashboardRepositoryProvider.overrideWithValue(dashboard),
           driverWorkRepositoryProvider.overrideWithValue(driverWork),
           notificationRepositoryProvider.overrideWithValue(notifications),
           supportRepositoryProvider.overrideWithValue(support),

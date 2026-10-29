@@ -1,11 +1,12 @@
 import 'package:ff_garage/app/router/app_routes.dart';
 import 'package:ff_garage/core/network/api_exception.dart';
 import 'package:ff_garage/core/widgets/filter_pill.dart';
-import 'package:ff_garage/core/widgets/stat_tile.dart';
 import 'package:ff_garage/data/models/enums.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/booking_journey.dart';
+import '../support/fakes.dart';
 import '../support/fakes_booking.dart';
 import '../support/fakes_catalog.dart';
 import '../support/fakes_driver.dart';
@@ -16,8 +17,8 @@ Finder _navLabel(String label) => find.descendant(
       matching: find.text(label),
     );
 
-Finder _stat(String label, String value) => find.descendant(
-      of: find.widgetWithText(StatTile, label),
+Finder _card(String key, String value) => find.descendant(
+      of: find.byKey(ValueKey(key)),
       matching: find.text(value),
     );
 
@@ -144,38 +145,111 @@ void main() {
   });
 
   group('admin dashboard', () {
-    testWidgets('shows booking and driver counts from the server',
+    testWidgets('shows booking, revenue and driver figures from the server',
         (tester) async {
       final ravi = driverAccount();
       final sam = driverAccount(id: 'd2', loginId: 'sam02', name: 'Sam', active: false);
+      final bookings = FakeAdminBookingRepository(
+        drivers: [ravi, sam],
+        bookings: [
+          booking(id: 'a', number: 1, status: BookingStatus.completed),
+          booking(id: 'b', number: 2, status: BookingStatus.cancelled),
+          booking(id: 'c', number: 3, status: BookingStatus.confirmed),
+          booking(id: 'd', number: 4),
+        ],
+      );
+      final drivers = FakeAdminDriverRepository(drivers: [ravi, sam]);
       final harness = AppHarness(
         role: UserRole.admin,
-        adminDrivers: FakeAdminDriverRepository(drivers: [ravi, sam]),
-        adminBookings: FakeAdminBookingRepository(
-          drivers: [ravi, sam],
-          bookings: [
-            booking(id: 'a', number: 1, status: BookingStatus.completed),
-            booking(id: 'b', number: 2, status: BookingStatus.cancelled),
-            booking(id: 'c', number: 3, status: BookingStatus.confirmed),
-            booking(id: 'd', number: 4),
-          ],
-        ),
+        adminDrivers: drivers,
+        adminBookings: bookings,
+        dashboard: FakeDashboardRepository(bookings, drivers,
+            collected: 1500, refunded: 200),
       );
       await harness.pump(tester);
 
-      expect(_stat('Total Bookings', '4'), findsOneWidget);
-      expect(_stat('Completed', '1'), findsOneWidget);
-      expect(_stat('Pending', '2'), findsOneWidget);
-      expect(_stat('Cancelled', '1'), findsOneWidget);
-      expect(_stat('Active Drivers', '1'), findsOneWidget);
+      expect(_card('stat-total', '4'), findsOneWidget);
+      expect(_card('stat-completed', '1'), findsOneWidget);
+      expect(_card('stat-pending', '2'), findsOneWidget);
+      expect(_card('stat-drivers', '1'), findsOneWidget);
+      expect(_card('stat-revenue', '₹1300'), findsOneWidget);
+      expect(find.textContaining('₹1500 collected, ₹200 refunded'), findsOneWidget);
+      // The management cards are gone: the sidebar is the navigation.
+      expect(find.text('Manage'), findsNothing);
     });
 
-    testWidgets('bookings, services and drivers screens open from the manage list',
+    testWidgets('lists the status breakdown and the recent bookings',
         (tester) async {
-      final harness = AppHarness(role: UserRole.admin);
+      useTallScreen(tester);
+      final harness = AppHarness(
+        role: UserRole.admin,
+        adminBookings: FakeAdminBookingRepository(bookings: [
+          booking(id: 'a', number: 1, status: BookingStatus.completed),
+          booking(id: 'b', number: 2, status: BookingStatus.cancelled),
+        ]),
+      );
       await harness.pump(tester);
 
-      await tapText(tester, 'Drivers');
+      expect(find.byKey(const ValueKey('status-row-completed')), findsOneWidget);
+      expect(find.byKey(const ValueKey('status-row-cancelled')), findsOneWidget);
+      expect(find.byKey(const ValueKey('recent-a')), findsOneWidget);
+      expect(find.byKey(const ValueKey('recent-b')), findsOneWidget);
+      // At most the newest few are fetched for this panel.
+      expect(harness.adminBookings.lists.last.offset, 0);
+    });
+
+    testWidgets('an empty garage shows empty states, not fake numbers',
+        (tester) async {
+      useTallScreen(tester);
+      await AppHarness(role: UserRole.admin).pump(tester);
+      expect(_card('stat-total', '0'), findsOneWidget);
+      expect(_card('stat-revenue', '₹0'), findsOneWidget);
+      expect(find.byKey(const ValueKey('breakdown-empty')), findsOneWidget);
+      expect(find.byKey(const ValueKey('recent-empty')), findsOneWidget);
+    });
+
+    testWidgets('a failing dashboard shows Retry and recovers', (tester) async {
+      useTallScreen(tester);
+      final bookings = FakeAdminBookingRepository();
+      final drivers = FakeAdminDriverRepository();
+      final dashboard = FakeDashboardRepository(bookings, drivers)
+        ..error = networkError;
+      final harness = AppHarness(
+        role: UserRole.admin,
+        adminBookings: bookings,
+        adminDrivers: drivers,
+        dashboard: dashboard,
+      );
+      await harness.pump(tester);
+      expect(find.text('Unable to reach the server.'), findsWidgets);
+      expect(find.byKey(const ValueKey('stat-total')), findsNothing);
+
+      dashboard.error = null;
+      await tapText(tester, 'Retry');
+      expect(_card('stat-total', '0'), findsOneWidget);
+    });
+
+    testWidgets('a failing recent list does not hide the figures',
+        (tester) async {
+      useTallScreen(tester);
+      final bookings = FakeAdminBookingRepository()..error = networkError;
+      final harness = AppHarness(role: UserRole.admin, adminBookings: bookings);
+      await harness.pump(tester);
+      expect(find.byKey(const ValueKey('quick-service')), findsOneWidget);
+      expect(find.text('Unable to reach the server.'), findsWidgets);
+    });
+
+    testWidgets('quick actions open the existing screens', (tester) async {
+      useTallScreen(tester);
+      await AppHarness(role: UserRole.admin).pump(tester);
+      await tapKey(tester, 'quick-driver');
+      expect(find.text('Add driver'), findsWidgets);
+    });
+
+    testWidgets('a stat card opens its list', (tester) async {
+      useTallScreen(tester);
+      await AppHarness(role: UserRole.admin).pump(tester);
+      await tapKey(tester, 'stat-drivers');
       expect(find.text('Add driver'), findsOneWidget);
     });
   });

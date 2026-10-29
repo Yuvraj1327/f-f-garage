@@ -50,7 +50,7 @@ void main() {
       expect(harness.paymentRepo.verifies, hasLength(1));
       expect(harness.paymentRepo.verifies.single.result.signature,
           'sig_from_device');
-      expect(find.text('Payment received. Your booking is confirmed.'),
+      expect(find.text('Advance received. Your booking is confirmed.'),
           findsOneWidget);
       expect(find.text('pay_TEST123'), findsOneWidget);
       expect(find.text('Test payment - no real money was charged.'),
@@ -99,7 +99,7 @@ void main() {
       launcher.result = null;
       await tapKey(tester, 'pay-now');
       expect(harness.paymentRepo.starts, hasLength(2));
-      expect(find.text('Payment received. Your booking is confirmed.'),
+      expect(find.text('Advance received. Your booking is confirmed.'),
           findsOneWidget);
     });
 
@@ -118,7 +118,7 @@ void main() {
       expect(harness.launcher.opened, hasLength(1));
       expect(harness.paymentRepo.starts, hasLength(1));
       expect(harness.paymentRepo.verifies, hasLength(2));
-      expect(find.text('Payment received. Your booking is confirmed.'),
+      expect(find.text('Advance received. Your booking is confirmed.'),
           findsOneWidget);
     });
 
@@ -139,7 +139,7 @@ void main() {
 
       expect(find.text('Your payment is still being confirmed by the bank.'),
           findsOneWidget);
-      expect(find.text('Payment received. Your booking is confirmed.'),
+      expect(find.text('Advance received. Your booking is confirmed.'),
           findsNothing);
     });
 
@@ -161,7 +161,7 @@ void main() {
 
       expect(find.text('Payment amount did not match the booking'),
           findsOneWidget);
-      expect(find.text('Payment received. Your booking is confirmed.'),
+      expect(find.text('Advance received. Your booking is confirmed.'),
           findsNothing);
     });
 

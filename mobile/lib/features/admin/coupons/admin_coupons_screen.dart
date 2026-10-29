@@ -6,6 +6,7 @@ import '../../../core/widgets/async_view.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../data/models/coupon.dart';
 import '../../../data/providers/data_providers.dart';
+import '../presentation/admin_scaffold.dart';
 
 final adminCouponsProvider = FutureProvider.autoDispose<List<Coupon>>(
   (ref) => ref.watch(billingRepositoryProvider).coupons(),
@@ -38,8 +39,8 @@ class AdminCouponsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final coupons = ref.watch(adminCouponsProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Coupons')),
+    return AdminScaffold(
+      section: AdminSection.coupons,
       floatingActionButton: FloatingActionButton.extended(
         key: const ValueKey('new-coupon'),
         onPressed: () => _create(context, ref),

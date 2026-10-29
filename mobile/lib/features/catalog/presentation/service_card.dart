@@ -176,12 +176,16 @@ class ServiceCard extends ConsumerWidget {
                     FilledButton.icon(
                       key: ValueKey('added-${service.id}'),
                       style: FilledButton.styleFrom(
+                        // The theme's buttons are full width; in a Row that is
+                        // an infinite-width layout error.
+                        minimumSize: const Size(96, 44),
                         backgroundColor: Colors.white,
                         foregroundColor: color,
-                        disabledBackgroundColor: Colors.white,
-                        disabledForegroundColor: color,
                       ),
-                      onPressed: null,
+                      onPressed: () {
+                        ref.read(bookingFlowProvider.notifier).reset();
+                        showSnack(context, '${service.name} removed.');
+                      },
                       icon: const Icon(Icons.check),
                       label: const Text('Added'),
                     )
@@ -189,6 +193,7 @@ class ServiceCard extends ConsumerWidget {
                     FilledButton(
                       key: ValueKey('add-${service.id}'),
                       style: FilledButton.styleFrom(
+                        minimumSize: const Size(96, 44),
                         backgroundColor: Colors.white,
                         foregroundColor: color,
                       ),

@@ -15,6 +15,7 @@ from app.db.availability_repository import (
 from app.db.booking_repository import BookingRepository, SupabaseBookingRepository
 from app.db.catalog_repository import CatalogRepository, SupabaseCatalogRepository
 from app.db.coupon_repository import CouponRepository, SupabaseCouponRepository
+from app.db.dashboard_repository import DashboardRepository, SupabaseDashboardRepository
 from app.db.extra_request_repository import (
     ExtraRequestRepository,
     SupabaseExtraRequestRepository,
@@ -276,6 +277,13 @@ def get_refund_repository(settings: SettingsDep) -> RefundRepository:
 
 
 RefundRepositoryDep = Annotated[RefundRepository, Depends(get_refund_repository)]
+
+
+def get_dashboard_repository(settings: SettingsDep) -> DashboardRepository:
+    return SupabaseDashboardRepository(get_supabase_admin_client(settings))
+
+
+DashboardRepositoryDep = Annotated[DashboardRepository, Depends(get_dashboard_repository)]
 
 
 def get_booking_service(

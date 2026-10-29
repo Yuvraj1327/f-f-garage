@@ -76,8 +76,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Service areas'), findsOneWidget);
-    expect(find.text('Availability'), findsOneWidget);
+    expect(find.text('Quick actions'), findsOneWidget);
+    expect(find.byKey(const ValueKey('side-dashboard')), findsOneWidget);
   });
 
   testWidgets('an unreachable backend shows Retry instead of signing out',

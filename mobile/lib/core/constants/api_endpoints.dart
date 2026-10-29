@@ -104,6 +104,9 @@ abstract final class ApiEndpoints {
   static const String vehicles = '/vehicles';
   static String vehicle(String id) => '/vehicles/$id';
 
+  // Admin: dashboard figures
+  static const String adminDashboard = '/admin/dashboard';
+
   // Admin: the garage's own details (name, phone, email, ...)
   static const String adminGarageSettings = '/admin/garage-settings';
 }

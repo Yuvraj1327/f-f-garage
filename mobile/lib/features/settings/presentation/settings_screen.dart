@@ -8,6 +8,7 @@ import '../../../core/widgets/app_nav.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/user_profile.dart';
+import '../../admin/presentation/admin_scaffold.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/presentation/sign_out.dart';
 
@@ -22,10 +23,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(authControllerProvider.select((s) => s.profile));
     final role = profile?.role;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      bottomNavigationBar: navFor(ref, NavTab.settings),
-      body: SafeArea(
+    final content = SafeArea(
         child: profile == null
             ? const Center(child: CircularProgressIndicator())
             : ListView(
@@ -113,7 +111,14 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-      ),
+    );
+    if (role == UserRole.admin) {
+      return AdminScaffold(section: AdminSection.settings, body: content);
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settings')),
+      bottomNavigationBar: navFor(ref, NavTab.settings),
+      body: content,
     );
   }
 }

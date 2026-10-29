@@ -118,12 +118,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                stops: [0.0, 0.22, 0.45, 0.68, 1.0],
+                stops: [0.0, 0.3, 0.46, 0.7, 0.86, 1.0],
                 colors: [
-                  Color(0x990B1B3F),
+                  Color(0xB30B1B3F),
+                  Color(0x660B1B3F),
                   Color(0x000B1B3F),
-                  Color(0x330B1B3F),
-                  Color(0xDD0B1B3F),
+                  Color(0x000B1B3F),
+                  Color(0xD90B1B3F),
                   Color(0xFA0B1B3F),
                 ],
               ),
@@ -163,8 +164,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                     ],
                                   ),
                                 ),
-                                const Spacer(),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 4),
                                 Text(
                                   'TWO WHEELER SERVICE',
                                   style: textTheme.labelMedium?.copyWith(
@@ -175,7 +175,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 SizedBox(
-                                  height: 168,
+                                  height: 150,
                                   child: PageView.builder(
                                     key: const ValueKey('onboarding-pages'),
                                     controller: _controller,
@@ -214,8 +214,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                           key: ValueKey('dot-$i'),
                                           duration:
                                               const Duration(milliseconds: 200),
-                                          margin: const EdgeInsets.only(
-                                              right: 8),
+                                          margin:
+                                              const EdgeInsets.only(right: 8),
                                           width: i == _page ? 20 : 8,
                                           height: 8,
                                           decoration: BoxDecoration(
@@ -229,7 +229,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                const Spacer(),
                                 FilledButton.icon(
                                   key: const ValueKey('onboarding-get-started'),
                                   onPressed: () => _leave(AppRoutes.register),
@@ -247,12 +247,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                     disabledBackgroundColor: Colors.white70,
                                     disabledForegroundColor: Colors.black45,
                                   ),
-                                  icon: const Icon(Icons.g_mobiledata,
-                                      size: 28),
+                                  icon:
+                                      const Icon(Icons.g_mobiledata, size: 28),
                                   label: const Text('Continue with Google'),
                                 ),
                                 SizedBox(
-                                  height: 56,
+                                  height: 48,
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
@@ -279,7 +279,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 0),
                               ],
                             ),
                           ),
